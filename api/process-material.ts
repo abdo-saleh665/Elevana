@@ -14,7 +14,7 @@ import {
   sendJson,
   truncate,
   type NotesPayload,
-} from "./_ai";
+} from "./_ai.js";
 
 export const config = {
   api: {

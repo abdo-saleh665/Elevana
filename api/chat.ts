@@ -14,7 +14,7 @@ import {
   truncate,
   validateContentType,
   type ChatContext,
-} from "./_ai";
+} from "./_ai.js";
 
 type ChatPayload = {
   messages?: unknown;

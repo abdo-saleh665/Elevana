@@ -13,7 +13,7 @@ import {
   validateContentType,
   type GeneratedQuizPayload,
   type NotesPayload,
-} from "./_ai";
+} from "./_ai.js";
 
 type GenerateQuizPayload = {
   lectureTitle?: string;
