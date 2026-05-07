@@ -82,7 +82,7 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 Elevana follows a **local-first** architecture. All user data, including uploaded lectures, notes, and quiz attempts, are stored directly in the browser's `localStorage`.
 
 1. **State Persistence**: The `localStore.ts` file uses `useSyncExternalStore` to create a reactive state that stays in sync with `localStorage`.
-2. **AI Integration**: When a lecture is uploaded, the app extracts text and sends it to the GROQ API (via the client) to generate notes and quizzes.
+2. **AI Integration**: Browser requests go to `/api/*` server endpoints, which call Groq without exposing `GROQ_API_KEY` to the client.
 3. **Authentication**: A demo-friendly authentication system manages user sessions and onboarding state locally.
 
 ### Database Schema (Local Representation)
@@ -109,14 +109,15 @@ The `ElevanaState` object stored in `localStorage` includes:
 
 ## Deployment
 
-Since Elevana is a client-side React application, it can be easily deployed to platforms like **Vercel**, **Netlify**, or **GitHub Pages**.
+Elevana builds as a Vite React app and includes Vercel API functions for AI chat, material processing, and quiz generation.
 
 ### Deploy to Vercel
 
 1. Push your code to GitHub.
 2. Connect your repository to Vercel.
-3. Add your `GROQ_API_KEY` to the Environment Variables section in the Vercel dashboard.
-4. Vercel will automatically detect Vite and deploy your app.
+3. Add `GROQ_API_KEY` to the Environment Variables section in the Vercel dashboard.
+4. Optionally add `GROQ_MODEL` if you want to override the default model.
+5. Vercel will automatically detect Vite and deploy the frontend plus `/api` functions.
 
 ## Contributing
 
