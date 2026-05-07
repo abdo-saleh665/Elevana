@@ -55,7 +55,7 @@ export const createQuizAttempt = ({
     }
   });
 
-  const score = Math.round((correct / questions.length) * 100);
+  const score = questions.length ? Math.round((correct / questions.length) * 100) : 0;
   const attempt: QuizAttempt = {
     id: crypto.randomUUID(),
     quizId,

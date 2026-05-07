@@ -14,9 +14,9 @@ const ActiveQuiz: React.FC<ActiveQuizProps> = ({ onExit }) => {
   const { quizId } = useParams();
   const appState = useAppState();
   const activeQuizId = quizId || "biology-midterm";
-  const quiz = appState.quizzes.find((item) => item.id === activeQuizId) || appState.quizzes[0];
-  const questions = quiz.questions;
-  const quizDurationSeconds = Math.max(60, quiz.estimatedMinutes * 60);
+  const quiz = appState.quizzes.find((item) => item.id === activeQuizId) || null;
+  const questions = quiz?.questions || [];
+  const quizDurationSeconds = Math.max(60, (quiz?.estimatedMinutes || 1) * 60);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({}); // valid questionId -> optionId
   const [quizState, setQuizState] = useState<QuizState>("active");
@@ -26,8 +26,9 @@ const ActiveQuiz: React.FC<ActiveQuizProps> = ({ onExit }) => {
 
   const currentQuestion = questions[currentQuestionIndex];
   const totalQuestions = questions.length;
-  const progressPercentage =
-    ((currentQuestionIndex + 1) / totalQuestions) * 100;
+  const progressPercentage = totalQuestions
+    ? ((currentQuestionIndex + 1) / totalQuestions) * 100
+    : 0;
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -36,6 +37,10 @@ const ActiveQuiz: React.FC<ActiveQuizProps> = ({ onExit }) => {
   };
 
   const handleOptionSelect = (optionId: string) => {
+    if (!currentQuestion) {
+      return;
+    }
+
     setAnswers((prev) => ({
       ...prev,
       [currentQuestion.id]: optionId,
@@ -43,6 +48,10 @@ const ActiveQuiz: React.FC<ActiveQuizProps> = ({ onExit }) => {
   };
 
   const handleNext = () => {
+    if (!totalQuestions) {
+      return;
+    }
+
     if (currentQuestionIndex < totalQuestions - 1) {
       setCurrentQuestionIndex((prev) => prev + 1);
     } else {
@@ -57,7 +66,7 @@ const ActiveQuiz: React.FC<ActiveQuizProps> = ({ onExit }) => {
   };
 
   const handleSubmit = useCallback(() => {
-    if (hasSubmittedRef.current) {
+    if (hasSubmittedRef.current || !quiz || !questions.length) {
       return;
     }
 
@@ -76,7 +85,7 @@ const ActiveQuiz: React.FC<ActiveQuizProps> = ({ onExit }) => {
     });
 
     navigate(`/quiz/results/${attempt.id}`, { state: attempt });
-  }, [answers, navigate, questions, quiz.id, startedAt]);
+  }, [answers, navigate, questions, quiz, startedAt]);
 
   useEffect(() => {
     if (quizState === "active" && timeRemaining > 0) {
@@ -92,6 +101,66 @@ const ActiveQuiz: React.FC<ActiveQuizProps> = ({ onExit }) => {
       handleSubmit();
     }
   }, [handleSubmit, quizState, timeRemaining]);
+
+  if (!quiz) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background-light px-4 text-center dark:bg-background-dark">
+        <div className="max-w-md rounded-2xl border border-neutral-200 bg-white p-8 shadow-sm dark:border-neutral-800 dark:bg-surface-dark">
+          <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-300">
+            <span className="material-symbols-outlined text-3xl">
+              error
+            </span>
+          </div>
+          <h1 className="font-display text-2xl font-bold text-neutral-900 dark:text-white">
+            Quiz Not Found
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+            This quiz is no longer available in your library.
+          </p>
+          <button
+            type="button"
+            onClick={onExit}
+            className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary-dark"
+          >
+            <span className="material-symbols-outlined text-[18px]">
+              arrow_back
+            </span>
+            Return to Quizzes
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!totalQuestions || !currentQuestion) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background-light px-4 text-center dark:bg-background-dark">
+        <div className="max-w-md rounded-2xl border border-neutral-200 bg-white p-8 shadow-sm dark:border-neutral-800 dark:bg-surface-dark">
+          <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-300">
+            <span className="material-symbols-outlined text-3xl">
+              edit_note
+            </span>
+          </div>
+          <h1 className="font-display text-2xl font-bold text-neutral-900 dark:text-white">
+            Questions Needed
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+            {quiz.title} is saved as a draft and needs questions before it can be started.
+          </p>
+          <button
+            type="button"
+            onClick={onExit}
+            className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary-dark"
+          >
+            <span className="material-symbols-outlined text-[18px]">
+              arrow_back
+            </span>
+            Return to Quizzes
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 overflow-y-auto min-h-screen bg-background-light dark:bg-background-dark flex flex-col relative">
