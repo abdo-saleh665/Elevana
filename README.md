@@ -1,143 +1,127 @@
-<div align="center">
-  <img src="public/favicon.svg" alt="Elevana logo" width="72" height="72" />
-  <h1>Elevana</h1>
-  <p><strong>AI-powered lecture notes, quizzes, study plans, and tutoring for university students.</strong></p>
-</div>
+# Elevana
 
-Elevana turns readable lecture material into a focused study workspace. Upload lecture files, generate structured notes, practice with quizzes, plan review sessions, and ask an AI tutor questions with lecture context.
+Elevana is an AI-powered educational platform designed to streamline the learning process. It helps students and lifelong learners manage lectures, generate structured notes, interact with an AI tutor, and test their knowledge with intelligently generated quizzes.
 
-## Features
+## Key Features
 
-- AI lecture processing for readable `PDF`, `DOCX`, `TXT`, and `MD` files up to 20 MB.
-- Structured study notes with summaries, key takeaways, outlines, and professor-style review notes.
-- Quiz generation from lecture notes, plus active quiz attempts and results review.
-- Context-aware AI tutor powered by Groq through local server-side endpoints.
-- Dashboard, schedule, lecture library, settings, onboarding, and protected app routes.
-- Local demo authentication, profile settings, plan limits, dark mode, and persisted app state.
-- Responsive React UI with Tailwind CSS, Framer Motion, and Recharts.
-
-> [!IMPORTANT]
-> Authentication and app data are currently local-demo implementations backed by browser storage. Do not use the local password flow as production authentication without replacing it with a real backend and hashed credentials.
+- **Lecture Management**: Upload and organize your study materials (PDF, DOCX, MP3).
+- **AI-Powered Notes**: Automatically generate summaries, key takeaways, and structured outlines from your lectures.
+- **AI Tutor**: Interactive chat experience to ask questions and clarify complex concepts in real-time.
+- **Smart Quizzes**: Test your knowledge with quizzes generated directly from your study materials.
+- **Learning Schedule**: Keep track of your lectures, quizzes, and focus sessions in a unified view.
+- **Focus Mode**: Pomodoro-style timer to help you stay productive during study blocks.
+- **Dark/Light Mode**: Aesthetic and comfortable viewing experience for any time of day.
 
 ## Tech Stack
 
-- React 19
-- TypeScript
-- Vite
-- Tailwind CSS
-- React Router
-- Framer Motion
-- Recharts
-- Groq API
-- `pdf-parse`, `mammoth`, and `formidable` for local material processing
+- **Framework**: [React 19](https://react.dev/) + [Vite 6](https://vitejs.dev/)
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/) + [Framer Motion](https://www.framer.com/motion/)
+- **State Management**: Custom SyncExternalStore with LocalStorage (Local-first architecture)
+- **AI Engine**: [GROQ](https://groq.com/) (Llama 3.1 8B)
+- **Data Visualization**: [Recharts](https://recharts.org/)
+- **Routing**: [React Router 7](https://reactrouter.com/)
+- **Document Parsing**: Mammoth (DOCX), PDF-Parse (PDF)
 
-## Project Structure
+## Prerequisites
 
-```text
-.
-├── App.tsx                    # Route definitions and app shell
-├── auth.tsx                   # Local demo auth and protected routes
-├── localStore.ts              # Browser-persisted demo data model
-├── vite.config.ts             # Vite config and local AI/API middleware
-├── pages/                     # App pages and public routes
-├── components/                # Shared UI components
-├── components/quiz/           # Quiz library and active quiz UI
-├── data/                      # Seed lectures and quizzes
-├── public/                    # Static assets
-└── .env.example               # Required AI environment variables
-```
+- **Node.js**: v20 or higher
+- **Package Manager**: npm or yarn
+- **API Key**: A GROQ API key is required for AI features.
 
 ## Getting Started
 
-### Prerequisites
+### 1. Clone the Repository
 
-- Node.js 20 or later recommended
-- npm
-- Groq API key for AI features
+```bash
+git clone https://github.com/abdo-saleh665/Elevana.git
+cd Elevana
+```
 
-### Installation
+### 2. Install Dependencies
 
 ```bash
 npm install
 ```
 
-Create a local environment file:
+### 3. Environment Setup
 
-```bash
-cp .env.example .env.local
-```
-
-Set your Groq key:
+Create a `.env.local` file in the root directory and add your GROQ API key:
 
 ```env
 GROQ_API_KEY=your_groq_api_key_here
 GROQ_MODEL=llama-3.1-8b-instant
 ```
 
-Start the development server:
+### 4. Start Development Server
 
 ```bash
 npm run dev
 ```
 
-Open the local Vite URL shown in your terminal.
+Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-## Demo Login
+## Architecture
 
-The seeded local account is:
+### Directory Structure
 
-```text
-Email: alex.student@university.edu
-Password: password123
+```
+├── components/         # Reusable UI components (Modals, Charts, Layouts)
+├── pages/              # Page components (Dashboard, AITutor, Lectures, etc.)
+├── data/               # Seed data for initial app state
+├── auth.tsx            # Authentication logic and ProtectedRoute component
+├── localStore.ts       # Core state management and LocalStorage synchronization
+├── types.ts            # Global TypeScript interfaces
+├── App.tsx             # Main application entry and routing
+├── index.css           # Global styles and Tailwind directives
+└── vite.config.ts      # Vite configuration
 ```
 
-You can also create a new local account from the signup page. All demo accounts are stored in browser storage.
+### Data Flow & State Management
 
-## AI Endpoints
+Elevana follows a **local-first** architecture. All user data, including uploaded lectures, notes, and quiz attempts, are stored directly in the browser's `localStorage`.
 
-During local development, Vite middleware provides these server-side routes so the Groq API key is not exposed to the browser:
+1. **State Persistence**: The `localStore.ts` file uses `useSyncExternalStore` to create a reactive state that stays in sync with `localStorage`.
+2. **AI Integration**: When a lecture is uploaded, the app extracts text and sends it to the GROQ API (via the client) to generate notes and quizzes.
+3. **Authentication**: A demo-friendly authentication system manages user sessions and onboarding state locally.
 
-- `POST /api/chat`
-- `POST /api/process-material`
-- `POST /api/generate-quiz`
+### Database Schema (Local Representation)
 
-The middleware validates request sizes, limits chat message length, rate-limits local requests, extracts text from supported uploads, and falls back to local note/quiz generation when the AI provider is unavailable.
+The `ElevanaState` object stored in `localStorage` includes:
 
-> [!NOTE]
-> These routes currently live in `vite.config.ts` as development server middleware. For a full Vercel production deployment with working AI features, move the `/api/*` handlers into Vercel Functions or another backend. The frontend still builds as a static Vite app.
+- `users`: Array of local user profiles.
+- `lectures`: Metadata and source text for uploaded materials.
+- `lectureNotes`: Generated content for each lecture.
+- `quizzes`: Array of questions and metadata for study sessions.
+- `quizAttempts`: History of user performance.
+- `schedule`: Calendar events and tasks.
+- `aiChats`: History of conversations with the AI Tutor.
 
 ## Available Scripts
 
-```bash
-npm run dev        # Start the Vite dev server
-npm run build      # Build the production frontend
-npm run preview    # Preview the production build locally
-npm run typecheck  # Run TypeScript checks
-npm run audit      # Run npm audit
-npm run check      # Run typecheck and production build
-```
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Starts the Vite development server |
+| `npm run build` | Builds the application for production |
+| `npm run preview` | Previews the production build locally |
+| `npm run typecheck` | Runs TypeScript compiler checks |
+| `npm run check` | Runs typechecks and build sequentially |
 
-## Deploying To Vercel
+## Deployment
 
-1. Push the repository to GitHub.
-2. Import the repository in Vercel.
-3. Use Vercel's Vite defaults:
-   Build command: `npm run build`
-   Output directory: `dist`
-4. Add environment variables in Vercel Project Settings:
-   `GROQ_API_KEY` and `GROQ_MODEL`.
-5. Add production API functions for `/api/chat`, `/api/process-material`, and `/api/generate-quiz` before relying on AI features in production.
+Since Elevana is a client-side React application, it can be easily deployed to platforms like **Vercel**, **Netlify**, or **GitHub Pages**.
 
-## Security Notes
+### Deploy to Vercel
 
-- `.env`, `.env.*`, and `.env.local` are ignored by Git; only `.env.example` is tracked.
-- Keep `GROQ_API_KEY` server-side only. Do not prefix it with `VITE_`.
-- Uploaded material is processed by local development middleware and capped at 20 MB.
-- Local demo credentials are for development only.
+1. Push your code to GitHub.
+2. Connect your repository to Vercel.
+3. Add your `GROQ_API_KEY` to the Environment Variables section in the Vercel dashboard.
+4. Vercel will automatically detect Vite and deploy your app.
 
-## Roadmap
+## Contributing
 
-- Move AI routes to production-ready serverless functions.
-- Replace local demo auth with a real authentication provider.
-- Add persistent database-backed users, lectures, quizzes, schedules, and chat history.
-- Add tests for lecture processing, quiz attempts, and protected routes.
+Contributions are welcome! If you have suggestions for new features or improvements, please open an issue or submit a pull request.
+
+## License
+
+This project is licensed under the MIT License.
