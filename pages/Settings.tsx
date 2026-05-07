@@ -56,18 +56,13 @@ const Settings: React.FC = () => {
   const applyTheme = (theme: "light" | "dark") => {
     if (theme === "dark") {
       document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
     } else {
       document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
     }
   };
 
   const handleChange = (field: keyof SettingsState, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    if (field === "theme") {
-      applyTheme(value as "light" | "dark");
-    }
   };
 
   const handleSave = () => {
@@ -86,15 +81,13 @@ const Settings: React.FC = () => {
           : item,
       ),
     }));
+    applyTheme(formData.theme);
     setInitialState(formData);
     setStatusMessage("Settings saved locally.");
   };
 
   const handleCancel = () => {
     setFormData(initialState);
-    if (initialState.theme !== formData.theme) {
-      applyTheme(initialState.theme);
-    }
   };
 
   const handleUpgrade = () => {
