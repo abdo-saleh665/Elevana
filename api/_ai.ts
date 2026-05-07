@@ -151,24 +151,6 @@ export const parseJsonObject = <T,>(content: string): T | null => {
   }
 };
 
-const ensurePdfRuntimeGlobals = async () => {
-  const globalScope = globalThis as typeof globalThis & {
-    DOMMatrix?: typeof DOMMatrix;
-    ImageData?: typeof ImageData;
-    Path2D?: typeof Path2D;
-  };
-
-  if (globalScope.DOMMatrix && globalScope.ImageData && globalScope.Path2D) {
-    return;
-  }
-
-  const canvas = await import("@napi-rs/canvas");
-
-  globalScope.DOMMatrix ||= canvas.DOMMatrix as unknown as typeof DOMMatrix;
-  globalScope.ImageData ||= canvas.ImageData as unknown as typeof ImageData;
-  globalScope.Path2D ||= canvas.Path2D as unknown as typeof Path2D;
-};
-
 export const callGroq = async (
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
   options: { temperature?: number; maxTokens?: number } = {},
@@ -385,15 +367,11 @@ export const extractTextFromUpload = async (filePath: string, fileName: string, 
   const lowerName = fileName.toLowerCase();
 
   if (mimeType === "application/pdf" || lowerName.endsWith(".pdf")) {
-    await ensurePdfRuntimeGlobals();
-    const { PDFParse } = await import("pdf-parse");
-    const parser = new PDFParse({ data: buffer });
-    try {
-      const result = await parser.getText();
-      return result.text;
-    } finally {
-      await parser.destroy();
-    }
+    const pdfParse = (await import("pdf-parse/lib/pdf-parse.js")).default as (
+      data: Buffer,
+    ) => Promise<{ text?: string }>;
+    const result = await pdfParse(buffer);
+    return result.text || "";
   }
 
   if (
