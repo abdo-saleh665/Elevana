@@ -194,12 +194,16 @@ const LandingPage: React.FC = () => {
                   elevana.ai/dashboard
                 </div>
               </div>
-              <div className="relative aspect-[16/10] w-full bg-neutral-50 dark:bg-gray-900 overflow-hidden group">
-                <img
-                  src="https://picsum.photos/1200/800"
-                  alt="Dashboard Preview"
-                  className="object-cover w-full h-full opacity-90 group-hover:scale-105 transition-transform duration-1000 ease-out"
-                />
+              <div className="relative aspect-[16/10] w-full bg-[radial-gradient(circle_at_top_left,_rgba(79,70,229,0.18),_transparent_35%),linear-gradient(135deg,_#f8fafc,_#eef2ff_48%,_#ffffff)] dark:bg-[radial-gradient(circle_at_top_left,_rgba(129,140,248,0.2),_transparent_35%),linear-gradient(135deg,_#020617,_#111827_52%,_#0f172a)] overflow-hidden group">
+                <div className="absolute inset-0 opacity-70">
+                  <div className="absolute left-8 top-8 h-28 w-48 rounded-2xl bg-white/80 shadow-sm dark:bg-white/10"></div>
+                  <div className="absolute right-10 top-12 h-20 w-72 rounded-2xl bg-white/70 shadow-sm dark:bg-white/10"></div>
+                  <div className="absolute bottom-10 left-12 h-40 w-[38%] rounded-2xl bg-white/75 shadow-sm dark:bg-white/10"></div>
+                  <div className="absolute bottom-12 right-12 h-36 w-[42%] rounded-2xl bg-white/80 shadow-sm dark:bg-white/10"></div>
+                  <div className="absolute left-16 bottom-20 h-2 w-52 rounded-full bg-indigo-200 dark:bg-indigo-400/30"></div>
+                  <div className="absolute left-16 bottom-28 h-2 w-72 rounded-full bg-slate-200 dark:bg-slate-600/50"></div>
+                  <div className="absolute right-20 bottom-24 h-16 w-16 rounded-full border-[12px] border-indigo-300/80 dark:border-indigo-400/40"></div>
+                </div>
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl p-8 rounded-2xl shadow-2xl border border-white/20 dark:border-white/5 max-w-lg w-full">
                   <div className="flex items-center gap-4 mb-6">
                     <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-primary dark:text-indigo-300">

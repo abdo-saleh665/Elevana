@@ -72,15 +72,26 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       const title = String(Array.isArray(fields.title) ? fields.title[0] : fields.title || originalName)
         .replace(/\.[^/.]+$/, "")
         .trim();
-      const notesPrompt = `Create structured study notes as JSON only for this uploaded lecture.
-Return this exact shape:
+      const notesPrompt = `Create rigorous university study notes as JSON only for this uploaded lecture.
+Your job is to help a student actually study from the material, not just summarize it.
+
+Return this exact JSON shape:
 {
-  "outline": [{"id":"overview","title":"Overview","subItems":["optional"]}],
-  "summary": "short paragraph",
-  "keyTakeaways": ["3-6 concise takeaways"],
-  "body": [{"id":"overview","title":"Overview","content":"useful study notes"}],
-  "professorNotes": ["1-2 caution or exam-prep notes"]
+  "outline": [{"id":"overview","title":"Overview","subItems":["optional subtopics"]}],
+  "summary": "120-180 word high-signal overview of the lecture",
+  "keyTakeaways": ["5-8 specific, testable takeaways"],
+  "body": [{"id":"overview","title":"Overview","content":"140-220 words of dense study notes"}],
+  "professorNotes": ["2-4 exam-prep cautions, common traps, or study priorities"]
 }
+
+Quality rules:
+- Create 5-8 body sections with stable kebab-case ids.
+- Each body section must explain mechanisms, definitions, relationships, examples, and why it matters.
+- Include likely exam angles, common confusions, and active-recall prompts inside the content when useful.
+- Do not invent facts that are not supported by the source text; say what to verify if the source is unclear.
+- Avoid generic advice like "study the main concepts" unless connected to a specific concept from the lecture.
+- Return valid JSON only, without markdown fences.
+
 Lecture title: ${title}
 Source text:
 ${truncate(sourceText, MAX_CONTEXT_CHARS)}`;
@@ -92,7 +103,7 @@ ${truncate(sourceText, MAX_CONTEXT_CHARS)}`;
           },
           { role: "user", content: notesPrompt },
         ],
-        { temperature: 0.2, maxTokens: 1400 },
+        { temperature: 0.18, maxTokens: 2800 },
       );
       const notes = sanitizeNotesPayload(parseJsonObject<NotesPayload>(message), title, sourceText);
 

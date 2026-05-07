@@ -55,10 +55,10 @@ export const MAX_MESSAGE_CHARS = 4_000;
 export const MAX_TOTAL_MESSAGE_CHARS = 12_000;
 export const MAX_UPLOAD_SIZE = 20 * 1024 * 1024;
 export const MAX_EXTRACTED_TEXT_CHARS = 60_000;
-export const MAX_CONTEXT_CHARS = 14_000;
+export const MAX_CONTEXT_CHARS = 24_000;
 
 const GROQ_TIMEOUT_MS = 30_000;
-const DEFAULT_GROQ_MODEL = "llama-3.1-8b-instant";
+const DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile";
 
 export const systemPrompt = `You are Elevana AI, a concise study tutor for university students.
 Explain concepts clearly, ask guiding questions when helpful, and generate study aids like summaries, quizzes, and study plans.
@@ -216,14 +216,43 @@ const createFallbackNotes = (title: string, sourceText: string): NotesPayload =>
     .split(/(?<=[.!?])\s+/)
     .map((sentence) => sentence.trim())
     .filter(Boolean);
-  const summary = sentences.slice(0, 3).join(" ") || `Review ${title} and identify the most important terms, examples, and exam-style questions.`;
-  const takeaways = sentences.slice(3, 7);
+  const summary = sentences.slice(0, 5).join(" ") || `Review ${title} and identify the most important terms, examples, and exam-style questions.`;
+  const takeaways = sentences.slice(5, 11);
+  const fallbackSections = [
+    {
+      id: "overview",
+      title: "Overview",
+      content: summary,
+    },
+    {
+      id: "core-concepts",
+      title: "Core Concepts",
+      content: sentences.slice(11, 18).join(" ") || cleanText.slice(0, 1200) || "Identify the central vocabulary, mechanisms, and relationships introduced in this material.",
+    },
+    {
+      id: "examples-and-applications",
+      title: "Examples and Applications",
+      content: sentences.slice(18, 25).join(" ") || "Connect each concept to a concrete lecture example, diagram, case, calculation, or real-world application.",
+    },
+    {
+      id: "exam-focus",
+      title: "Exam Focus",
+      content: "Prioritize definitions, cause-and-effect relationships, compare-and-contrast questions, and steps in any process. Turn each subsection into an active-recall question before reviewing the answer.",
+    },
+    {
+      id: "common-mistakes",
+      title: "Common Mistakes",
+      content: "Watch for terms that sound similar, steps that must happen in order, and examples that test exceptions rather than the general rule.",
+    },
+  ];
 
   return {
     outline: [
       { id: "overview", title: "Overview" },
-      { id: "key-concepts", title: "Key Concepts", subItems: ["Definitions", "Examples"] },
-      { id: "review-plan", title: "Review Plan" },
+      { id: "core-concepts", title: "Core Concepts", subItems: ["Definitions", "Relationships"] },
+      { id: "examples-and-applications", title: "Examples and Applications" },
+      { id: "exam-focus", title: "Exam Focus" },
+      { id: "common-mistakes", title: "Common Mistakes" },
     ],
     summary,
     keyTakeaways: takeaways.length
@@ -233,25 +262,10 @@ const createFallbackNotes = (title: string, sourceText: string): NotesPayload =>
           "Convert each heading into one active-recall question.",
           "Revisit confusing sections before starting the quiz.",
         ],
-    body: [
-      {
-        id: "overview",
-        title: "Overview",
-        content: summary,
-      },
-      {
-        id: "key-concepts",
-        title: "Key Concepts",
-        content: sentences.slice(7, 13).join(" ") || cleanText.slice(0, 900) || "The uploaded material was parsed, but only limited text was available.",
-      },
-      {
-        id: "review-plan",
-        title: "Review Plan",
-        content: "Read the summary, explain each takeaway without looking, then use the generated quiz to identify weak areas.",
-      },
-    ],
+    body: fallbackSections,
     professorNotes: [
-      "This is an MVP-generated study note. Verify key facts against your original lecture material.",
+      "Verify high-stakes facts, formulas, names, and dates against the original lecture material before an exam.",
+      "If a section feels easy, test it by explaining it from memory and writing one exam-style question for it.",
     ],
   };
 };
@@ -285,12 +299,12 @@ export const sanitizeNotesPayload = (payload: Partial<NotesPayload> | null, titl
     outline: Array.isArray(payload?.outline) && payload.outline.length ? payload.outline : fallback.outline,
     summary: typeof payload?.summary === "string" && payload.summary.trim() ? payload.summary.trim() : fallback.summary,
     keyTakeaways: Array.isArray(payload?.keyTakeaways) && payload.keyTakeaways.length
-      ? payload.keyTakeaways.filter((item): item is string => typeof item === "string").slice(0, 6)
+      ? payload.keyTakeaways.filter((item): item is string => typeof item === "string").slice(0, 8)
       : fallback.keyTakeaways,
     body: Array.isArray(payload?.body) && payload.body.length
       ? payload.body
           .filter((section) => section && typeof section.title === "string" && typeof section.content === "string")
-          .slice(0, 6)
+          .slice(0, 8)
           .map((section, index) => ({
             id: typeof section.id === "string" && section.id ? section.id : slugify(section.title || `section-${index + 1}`),
             title: section.title,
@@ -298,7 +312,7 @@ export const sanitizeNotesPayload = (payload: Partial<NotesPayload> | null, titl
           }))
       : fallback.body,
     professorNotes: Array.isArray(payload?.professorNotes) && payload.professorNotes.length
-      ? payload.professorNotes.filter((item): item is string => typeof item === "string").slice(0, 3)
+      ? payload.professorNotes.filter((item): item is string => typeof item === "string").slice(0, 4)
       : fallback.professorNotes,
   };
 };

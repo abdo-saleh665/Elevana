@@ -328,7 +328,7 @@ const LectureDetail: React.FC = () => {
 
             {/* Content Body */}
             <div className="prose prose-lg prose-slate dark:prose-invert max-w-none font-serif md:prose-xl">
-              <p className="first-letter:text-6xl first-letter:font-bold first-letter:text-primary first-letter:float-left first-letter:mr-3 first-letter:leading-[0.8] text-slate-600 dark:text-slate-300">
+              <p className="whitespace-pre-line first-letter:text-6xl first-letter:font-bold first-letter:text-primary first-letter:float-left first-letter:mr-3 first-letter:leading-[0.8] text-slate-600 dark:text-slate-300">
                 {notes.summary}
               </p>
 
@@ -340,7 +340,7 @@ const LectureDetail: React.FC = () => {
                   >
                     {section.title}
                   </h3>
-                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-[1.125rem]">
+                  <p className="whitespace-pre-line text-slate-600 dark:text-slate-300 leading-relaxed text-[1.125rem]">
                     {section.content}
                   </p>
 
