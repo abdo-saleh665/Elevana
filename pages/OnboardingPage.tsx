@@ -1,10 +1,31 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { updateAppState, useAppState } from "../localStore";
 
 const OnboardingPage: React.FC = () => {
   const navigate = useNavigate();
-  const [selectedStyle, setSelectedStyle] = useState("reading");
-  const [intensity, setIntensity] = useState(75);
+  const appState = useAppState();
+  const [selectedStyle, setSelectedStyle] = useState(appState.onboarding.learningStyle);
+  const [weeklyCommitment, setWeeklyCommitment] = useState(appState.onboarding.weeklyCommitment);
+  const [intensity, setIntensity] = useState(appState.onboarding.goalIntensity);
+
+  const saveOnboarding = () => {
+    updateAppState((state) => ({
+      ...state,
+      onboarding: {
+        completed: true,
+        learningStyle: selectedStyle,
+        weeklyCommitment,
+        goalIntensity: intensity,
+        completedAt: new Date().toISOString(),
+      },
+      settings: {
+        ...state.settings,
+        learningStyle: selectedStyle,
+      },
+    }));
+    navigate("/dashboard");
+  };
 
   return (
     <div className="bg-background-light dark:bg-background-dark font-display text-slate-600 dark:text-slate-300 min-h-screen flex flex-col antialiased">
@@ -134,11 +155,11 @@ const OnboardingPage: React.FC = () => {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
                 <div className="relative">
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+                  <label htmlFor="weekly-commitment" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
                     Weekly commitment
                   </label>
                   <div className="relative">
-                    <select className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:border-primary focus:ring-primary shadow-sm py-3.5 pl-4 pr-10 appearance-none font-medium transition-shadow hover:bg-white dark:hover:bg-slate-700">
+                    <select id="weekly-commitment" name="weeklyCommitment" value={weeklyCommitment} onChange={(event) => setWeeklyCommitment(event.target.value)} className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:border-primary focus:ring-primary shadow-sm py-3.5 pl-4 pr-10 appearance-none font-medium transition-shadow hover:bg-white dark:hover:bg-slate-700">
                       <option>1-3 hours / week</option>
                       <option>3-5 hours / week</option>
                       <option>5-10 hours / week</option>
@@ -150,7 +171,7 @@ const OnboardingPage: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4">
+                  <label htmlFor="goal-intensity" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4">
                     Goal intensity
                   </label>
                   <div className="flex items-center gap-4 h-[50px]">
@@ -159,6 +180,8 @@ const OnboardingPage: React.FC = () => {
                     </span>
                     <div className="flex-grow relative group">
                       <input
+                        id="goal-intensity"
+                        name="goalIntensity"
                         type="range"
                         min="1"
                         max="100"
@@ -184,14 +207,15 @@ const OnboardingPage: React.FC = () => {
                 Back
               </button>
               <div className="flex items-center gap-6 w-full sm:w-auto justify-end">
-                <a
-                  href="#"
-                  className="hidden sm:inline-block text-sm font-semibold text-slate-400 hover:text-primary transition-colors"
-                >
-                  Skip customization
-                </a>
+                  <button
+                    type="button"
+                    onClick={saveOnboarding}
+                    className="hidden sm:inline-block text-sm font-semibold text-slate-400 hover:text-primary transition-colors"
+                  >
+                    Skip customization
+                  </button>
                 <button
-                  onClick={() => navigate("/dashboard")}
+                  onClick={saveOnboarding}
                   className="w-full sm:w-auto bg-primary hover:bg-primary-dark text-white font-semibold text-base px-8 py-3.5 rounded-xl shadow-lg shadow-primary/30 hover:shadow-primary/50 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 group"
                   type="button"
                 >

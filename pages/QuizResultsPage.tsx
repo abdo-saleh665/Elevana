@@ -1,31 +1,50 @@
 import React from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import {
+  formatElapsedTime,
+  getLatestQuizAttempt,
+  getQuizAttempt,
+  type QuizAttempt,
+} from "../quizAttempts";
 
-interface Question {
-  id: string;
-  topic: string;
-  text: string;
-  options: { id: string; text: string }[];
-  correctOptionId: string;
-  explanation: string;
-}
+const getResultCopy = (score: number) => {
+  if (score >= 80) {
+    return {
+      label: "Passed",
+      title: "Great job, Alex!",
+      tone: "emerald",
+      body: "You've shown a strong understanding of this quiz. Review the missed or skipped questions to aim for a perfect score next time.",
+    };
+  }
 
-interface LocationState {
-  questions: Question[];
-  answers: Record<string, string>;
-  score: number;
-  correct: number;
-  wrong: number;
-  timeTaken: string;
-}
+  if (score >= 60) {
+    return {
+      label: "Passed",
+      title: "Good progress, Alex.",
+      tone: "amber",
+      body: "You passed, but a few concepts still need attention. Review the explanations below before retaking the quiz.",
+    };
+  }
+
+  return {
+    label: "Needs Review",
+    title: "Keep practicing, Alex.",
+    tone: "rose",
+    body: "This attempt shows gaps in the topic. Review the explanations below, then retake the quiz when ready.",
+  };
+};
 
 const QuizResultsPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const state = location.state as LocationState;
+  const { attemptId } = useParams();
+  const state = location.state as QuizAttempt | null;
+  const attempt = state?.id
+    ? state
+    : getQuizAttempt(attemptId) || (!attemptId ? getLatestQuizAttempt() : null);
 
   // Handle direct access or missing state
-  if (!state) {
+  if (!attempt) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark text-slate-500">
         <div className="text-center">
@@ -41,14 +60,17 @@ const QuizResultsPage: React.FC = () => {
     );
   }
 
-  const { questions, answers, score, correct, wrong, timeTaken } = state;
+  const { questions, answers, score, correct, wrong, skipped, elapsedSeconds } =
+    attempt;
+  const timeTaken = formatElapsedTime(elapsedSeconds);
+  const resultCopy = getResultCopy(score);
 
   const handleExit = () => {
     navigate("/quiz");
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto min-h-screen bg-background-light dark:bg-background-dark flex flex-col relative">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 overflow-y-auto min-h-screen bg-background-light dark:bg-background-dark flex flex-col relative">
       <div className="fixed inset-0 pointer-events-none z-0 opacity-30 bg-[radial-gradient(at_40%_20%,hsla(228,100%,74%,0.1)_0px,transparent_50%),radial-gradient(at_80%_0%,hsla(189,100%,56%,0.1)_0px,transparent_50%),radial-gradient(at_0%_50%,hsla(340,100%,76%,0.1)_0px,transparent_50%)]"></div>
 
       <main className="flex-grow container mx-auto px-4 py-8 max-w-3xl relative z-10 flex flex-col items-center">
@@ -100,22 +122,25 @@ const QuizResultsPage: React.FC = () => {
             </div>
 
             <div className="flex-grow text-center md:text-left">
-              <span className="inline-block px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold rounded-full mb-3 uppercase tracking-wide">
-                Passed
+              <span
+                className={`inline-block px-3 py-1 text-xs font-bold rounded-full mb-3 uppercase tracking-wide ${
+                  resultCopy.tone === "emerald"
+                    ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"
+                    : resultCopy.tone === "amber"
+                      ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
+                      : "bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400"
+                }`}
+              >
+                {resultCopy.label}
               </span>
               <h2 className="text-3xl font-bold text-neutral-800 dark:text-white mb-2">
-                Great Job, Alex!
+                {resultCopy.title}
               </h2>
               <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed mb-6 max-w-md">
-                You've shown a strong understanding of {questions[0]?.topic}.
-                Review the section on{" "}
-                <span className="font-semibold text-primary underline decoration-primary/30 underline-offset-2">
-                  DNA Replication
-                </span>{" "}
-                to aim for a perfect score next time.
+                {resultCopy.body}
               </p>
 
-              <div className="flex items-center justify-center md:justify-start gap-4">
+              <div className="flex items-center justify-center md:justify-start gap-3 flex-wrap">
                 <div className="flex flex-col items-center justify-center w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                   <span className="material-symbols-outlined text-emerald-500 mb-1">
                     check_circle
@@ -136,6 +161,17 @@ const QuizResultsPage: React.FC = () => {
                   </span>
                   <span className="text-[10px] font-semibold text-slate-400 uppercase mt-1">
                     Wrong
+                  </span>
+                </div>
+                <div className="flex flex-col items-center justify-center w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-neutral-100 dark:border-neutral-800">
+                  <span className="material-symbols-outlined text-amber-500 mb-1">
+                    pending
+                  </span>
+                  <span className="text-lg font-bold text-neutral-800 dark:text-white leading-none">
+                    {skipped}
+                  </span>
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase mt-1">
+                    Skipped
                   </span>
                 </div>
                 <div className="flex flex-col items-center justify-center w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-neutral-100 dark:border-neutral-800">

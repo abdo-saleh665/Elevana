@@ -1,21 +1,47 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../auth";
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login, socialLogin, resetPassword } = useAuth();
+  const [email, setEmail] = React.useState("alex.student@university.edu");
+  const [password, setPassword] = React.useState("password123");
+  const [message, setMessage] = React.useState<string | null>(null);
 
   const handleLogin = () => {
-    navigate("/dashboard");
+    const from = (location.state as { from?: string } | null)?.from || "/dashboard";
+    const result = login({ email, password });
+
+    if (!result.ok) {
+      setMessage(result.message || "Unable to sign in.");
+      return;
+    }
+
+    navigate(from, { replace: true });
+  };
+
+  const handleSocialLogin = (provider: "google" | "microsoft" | "apple") => {
+    const from = (location.state as { from?: string } | null)?.from || "/dashboard";
+    socialLogin(provider);
+    navigate(from, { replace: true });
+  };
+
+  const handleResetPassword = () => {
+    const result = resetPassword(email);
+    setMessage(result.message || "Password reset complete.");
+    if (result.ok) {
+      setPassword("password123");
+    }
   };
 
   return (
     <div
-      className="min-h-screen w-full flex flex-col items-center justify-center relative overflow-hidden"
-      style={{
-        background:
-          "linear-gradient(135deg, #e8eaf6 0%, #e3f2fd 30%, #f3e5f5 60%, #ede7f6 100%)",
-      }}
+      className="min-h-screen w-full flex flex-col items-center justify-center relative overflow-hidden bg-gradient-to-br from-indigo-50 via-blue-50 to-purple-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950"
     >
+      <button type="button" onClick={() => navigate("/")} className="absolute top-6 left-6 z-20 flex items-center gap-2 text-neutral-600 dark:text-neutral-400 hover:text-primary dark:hover:text-indigo-400 transition-colors font-medium bg-white/50 dark:bg-black/20 backdrop-blur-sm px-4 py-2 rounded-full border border-neutral-200/50 dark:border-white/5 shadow-sm"><span className="material-symbols-outlined text-[18px]">arrow_back</span>Back to Home</button>
+
       {/* Floating Letters Animation */}
       <style>{`
         @keyframes floatLetter {
@@ -166,7 +192,7 @@ const LoginPage: React.FC = () => {
       ].map((l, i) => (
         <span
           key={i}
-          className={`absolute pointer-events-none select-none font-display font-extrabold ${l.primary ? "text-indigo-600" : "text-neutral-500"}`}
+          className={`absolute pointer-events-none select-none font-display font-extrabold ${l.primary ? "text-indigo-600 dark:text-indigo-400" : "text-neutral-500 dark:text-neutral-600"}`}
           style={
             {
               top: l.top,
@@ -186,14 +212,14 @@ const LoginPage: React.FC = () => {
       ))}
 
       {/* Card */}
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-premium px-8 py-10 relative z-10">
+      <div className="w-full max-w-md bg-white dark:bg-surface-dark rounded-2xl shadow-premium dark:shadow-none dark:border dark:border-white/10 px-8 py-10 relative z-10">
         {/* Tabs */}
-        <div className="flex border-b border-neutral-200 mb-8">
-          <button className="flex-1 pb-3 text-sm font-semibold text-primary border-b-2 border-primary transition-colors">
+        <div className="flex border-b border-neutral-200 dark:border-white/10 mb-8">
+          <button type="button" disabled aria-current="page" className="flex-1 pb-3 text-sm font-semibold text-primary dark:text-indigo-400 border-b-2 border-primary dark:border-indigo-400 transition-colors">
             Log In
           </button>
           <button
-            className="flex-1 pb-3 text-sm font-semibold text-neutral-400 hover:text-neutral-600 transition-colors"
+            className="flex-1 pb-3 text-sm font-semibold text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
             onClick={() => navigate("/signup")}
           >
             Sign Up
@@ -202,17 +228,17 @@ const LoginPage: React.FC = () => {
 
         {/* Heading */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-extrabold text-neutral-900 font-display mb-1">
+          <h1 className="text-2xl font-extrabold text-neutral-900 dark:text-white font-display mb-1">
             Welcome Back
           </h1>
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
             Master your learning journey today.
           </p>
         </div>
 
         {/* Social Login Buttons */}
         <div className="flex gap-3 mb-5">
-          <button className="flex-1 flex items-center justify-center gap-2 bg-white border border-neutral-200 text-neutral-700 font-medium py-3 px-3 rounded-xl hover:bg-neutral-50 transition-all shadow-sm hover:shadow-md text-sm">
+          <button type="button" onClick={() => handleSocialLogin("google")} className="flex-1 flex items-center justify-center gap-2 bg-white dark:bg-surface-dark border border-neutral-200 dark:border-white/10 text-neutral-700 dark:text-neutral-300 font-medium py-3 px-3 rounded-xl hover:bg-neutral-50 dark:hover:bg-white/5 transition-all shadow-sm dark:shadow-none hover:shadow-md text-sm">
             <img
               src="https://www.svgrepo.com/show/475656/google-color.svg"
               className="w-5 h-5"
@@ -220,7 +246,7 @@ const LoginPage: React.FC = () => {
             />
             Google
           </button>
-          <button className="flex-1 flex items-center justify-center gap-2 bg-white border border-neutral-200 text-neutral-700 font-medium py-3 px-3 rounded-xl hover:bg-neutral-50 transition-all shadow-sm hover:shadow-md text-sm">
+          <button type="button" onClick={() => handleSocialLogin("microsoft")} className="flex-1 flex items-center justify-center gap-2 bg-white dark:bg-surface-dark border border-neutral-200 dark:border-white/10 text-neutral-700 dark:text-neutral-300 font-medium py-3 px-3 rounded-xl hover:bg-neutral-50 dark:hover:bg-white/5 transition-all shadow-sm dark:shadow-none hover:shadow-md text-sm">
             <svg className="w-5 h-5" viewBox="0 0 23 23" fill="none">
               <path d="M11 0H0V11H11V0Z" fill="#F25022" />
               <path d="M23 0H12V11H23V0Z" fill="#7FBA00" />
@@ -229,7 +255,7 @@ const LoginPage: React.FC = () => {
             </svg>
             Microsoft
           </button>
-          <button className="flex-1 flex items-center justify-center gap-2 bg-white border border-neutral-200 text-neutral-700 font-medium py-3 px-3 rounded-xl hover:bg-neutral-50 transition-all shadow-sm hover:shadow-md text-sm">
+          <button type="button" onClick={() => handleSocialLogin("apple")} className="flex-1 flex items-center justify-center gap-2 bg-white dark:bg-surface-dark border border-neutral-200 dark:border-white/10 text-neutral-700 dark:text-neutral-300 font-medium py-3 px-3 rounded-xl hover:bg-neutral-50 dark:hover:bg-white/5 transition-all shadow-sm dark:shadow-none hover:shadow-md text-sm">
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97C14.32 21.99 13.89 21.18 12.37 21.18C10.84 21.18 10.37 21.95 9.1 21.99C7.79 22.03 6.8 20.68 5.96 19.47C4.25 16.99 2.97 12.5 4.7 9.56C5.55 8.09 7.13 7.17 8.82 7.15C10.1 7.13 11.32 8.01 12.11 8.01C12.89 8.01 14.37 6.95 15.92 7.11C16.57 7.14 18.39 7.38 19.56 9.07C19.47 9.13 17.29 10.39 17.31 13.03C17.34 16.18 20.05 17.27 20.08 17.28C20.05 17.35 19.61 18.87 18.71 19.5ZM13 3.5C13.73 2.67 14.94 2.04 15.94 2C16.07 3.17 15.6 4.35 14.9 5.19C14.21 6.04 13.07 6.7 11.95 6.61C11.8 5.46 12.36 4.26 13 3.5Z" />
             </svg>
@@ -239,11 +265,11 @@ const LoginPage: React.FC = () => {
 
         {/* Divider */}
         <div className="relative flex py-3 items-center">
-          <div className="flex-grow border-t border-neutral-200"></div>
-          <span className="flex-shrink-0 mx-4 text-neutral-400 text-[11px] uppercase tracking-widest font-semibold">
+          <div className="flex-grow border-t border-neutral-200 dark:border-white/10"></div>
+          <span className="flex-shrink-0 mx-4 text-neutral-400 dark:text-neutral-500 text-[11px] uppercase tracking-widest font-semibold">
             Or
           </span>
-          <div className="flex-grow border-t border-neutral-200"></div>
+          <div className="flex-grow border-t border-neutral-200 dark:border-white/10"></div>
         </div>
 
         {/* Form */}
@@ -255,50 +281,66 @@ const LoginPage: React.FC = () => {
           }}
         >
           <div className="space-y-1.5">
-            <label className="block text-[11px] font-bold text-neutral-500 uppercase tracking-wider">
+            <label htmlFor="login-email" className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
               Email
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                <span className="material-symbols-outlined text-neutral-400 text-[18px]">
+                <span className="material-symbols-outlined text-neutral-400 dark:text-neutral-500 text-[18px]">
                   mail
                 </span>
               </div>
               <input
-                className="block w-full pl-11 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-neutral-900 placeholder-neutral-400 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all outline-none text-sm"
+                id="login-email"
+                name="email"
+                autoComplete="email"
+                className="block w-full pl-11 pr-4 py-3 bg-neutral-50 dark:bg-black/50 border border-neutral-200 dark:border-white/10 rounded-xl text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-600 focus:ring-2 focus:ring-primary/30 dark:focus:ring-indigo-500/30 focus:border-primary dark:focus:border-indigo-400 transition-all outline-none text-sm"
                 placeholder="student@university.edu"
                 type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
               />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-[11px] font-bold text-neutral-500 uppercase tracking-wider">
+            <label htmlFor="login-password" className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
               Password
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                <span className="material-symbols-outlined text-neutral-400 text-[18px]">
+                <span className="material-symbols-outlined text-neutral-400 dark:text-neutral-500 text-[18px]">
                   lock
                 </span>
               </div>
               <input
-                className="block w-full pl-11 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-neutral-900 placeholder-neutral-400 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all outline-none text-sm"
+                id="login-password"
+                name="password"
+                autoComplete="current-password"
+                className="block w-full pl-11 pr-4 py-3 bg-neutral-50 dark:bg-black/50 border border-neutral-200 dark:border-white/10 rounded-xl text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-600 focus:ring-2 focus:ring-primary/30 dark:focus:ring-indigo-500/30 focus:border-primary dark:focus:border-indigo-400 transition-all outline-none text-sm"
                 placeholder="••••••••"
                 type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
               />
             </div>
             <div className="text-right">
-              <a
-                href="#"
-                className="text-xs font-medium text-primary hover:text-primary-dark"
+              <button
+                type="button"
+                onClick={handleResetPassword}
+                className="text-xs font-medium text-primary dark:text-indigo-400 hover:text-primary-dark dark:hover:text-indigo-300"
               >
                 Forgot password?
-              </a>
+              </button>
             </div>
           </div>
 
           <div className="pt-1">
+            {message && (
+              <p className="mb-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 px-3 py-2 text-xs font-medium text-primary dark:text-indigo-300">
+                {message}
+              </p>
+            )}
             <button
               type="submit"
               className="w-full text-white font-semibold py-3.5 px-4 rounded-xl shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
@@ -316,15 +358,15 @@ const LoginPage: React.FC = () => {
 
         {/* Terms */}
         <div className="mt-6 text-center">
-          <p className="text-[11px] text-neutral-400 leading-relaxed">
+          <p className="text-[11px] text-neutral-400 dark:text-neutral-500 leading-relaxed">
             By continuing, you agree to Elevana's{" "}
-            <a href="#" className="underline hover:text-neutral-600">
+            <button type="button" onClick={() => navigate("/terms")} className="underline hover:text-neutral-600 dark:hover:text-neutral-300">
               Terms of Service
-            </a>{" "}
+            </button>{" "}
             and{" "}
-            <a href="#" className="underline hover:text-neutral-600">
+            <button type="button" onClick={() => navigate("/privacy")} className="underline hover:text-neutral-600 dark:hover:text-neutral-300">
               Privacy Policy
-            </a>
+            </button>
             .
           </p>
         </div>

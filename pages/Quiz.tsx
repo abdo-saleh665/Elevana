@@ -5,8 +5,8 @@ import QuizLibrary from "../components/quiz/QuizLibrary";
 const Quiz: React.FC = () => {
   const navigate = useNavigate();
 
-  const handleStartQuiz = () => {
-    navigate("/active-quiz");
+  const handleStartQuiz = (quizId: string) => {
+    navigate(`/active-quiz/${quizId}`);
   };
 
   return <QuizLibrary onStartQuiz={handleStartQuiz} />;

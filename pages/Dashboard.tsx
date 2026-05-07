@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import {
   BarChart,
   Bar,
@@ -7,23 +8,61 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-
-const data = [
-  { name: "Sa", fullName: "Saturday", hours: 2.5 },
-  { name: "Su", fullName: "Sunday", hours: 4 },
-  { name: "Mo", fullName: "Monday", hours: 6.5 },
-  { name: "Tu", fullName: "Tuesday", hours: 3 },
-  { name: "We", fullName: "Wednesday", hours: 8.5 },
-  { name: "Th", fullName: "Thursday", hours: 2 },
-  { name: "Fr", fullName: "Friday", hours: 5 },
-];
+import { updateAppState, useAppState } from "../localStore";
+import { useAuth } from "../auth";
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
+  const appState = useAppState();
+  const { user } = useAuth();
   const [timeLeft, setTimeLeft] = React.useState(25 * 60);
   const [isActive, setIsActive] = React.useState(false);
   const [mode, setMode] = React.useState<"focus" | "short" | "long">("focus");
   const [taskName, setTaskName] = React.useState("Deep Work");
   const [sessions, setSessions] = React.useState(0);
+  const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
+  const readyLectures = appState.lectures.filter((lecture) => lecture.status === "ready");
+  const quizScores = appState.quizAttempts.map((attempt) => attempt.score);
+  const quizAverage = quizScores.length
+    ? Math.round(quizScores.reduce((total, score) => total + score, 0) / quizScores.length)
+    : 0;
+  const totalLearningSeconds = appState.focusSessions.reduce((total, session) => total + session.secondsCompleted, 0);
+  const totalLearningLabel = `${Math.floor(totalLearningSeconds / 3600)}h ${Math.floor((totalLearningSeconds % 3600) / 60)}m`;
+  const learningData = [...Array(7)].map((_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - index));
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23, 59, 59, 999);
+    const seconds = appState.focusSessions
+      .filter((session) => {
+        const completedAt = new Date(session.completedAt).getTime();
+        return completedAt >= dayStart.getTime() && completedAt <= dayEnd.getTime();
+      })
+      .reduce((total, session) => total + session.secondsCompleted, 0);
+
+    return {
+      name: date.toLocaleDateString("en-US", { weekday: "short" }).slice(0, 2),
+      fullName: date.toLocaleDateString("en-US", { weekday: "long" }),
+      hours: Number((seconds / 3600).toFixed(1)),
+      completed: seconds > 0,
+    };
+  });
+  const visibleStreak = (() => {
+    let count = 0;
+    for (let index = learningData.length - 1; index >= 0; index -= 1) {
+      if (!learningData[index].completed) break;
+      count += 1;
+    }
+    return count;
+  })();
+  const recentLectures = [...appState.lectures]
+    .sort((a, b) => new Date(b.lastAccessedAt || b.uploadedAt).getTime() - new Date(a.lastAccessedAt || a.uploadedAt).getTime())
+    .slice(0, 2);
+  const todaysSchedule = [...appState.schedule]
+    .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
+    .slice(0, 3);
 
   React.useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -35,6 +74,19 @@ const Dashboard: React.FC = () => {
       setIsActive(false);
       if (mode === "focus") {
         setSessions((prev) => (prev + 1) % 5); // Cycle after 4 sessions
+        updateAppState((state) => ({
+          ...state,
+          focusSessions: [
+            {
+              id: crypto.randomUUID(),
+              taskName,
+              mode,
+              secondsCompleted: 25 * 60,
+              completedAt: new Date().toISOString(),
+            },
+            ...state.focusSessions,
+          ].slice(0, 50),
+        }));
       }
     }
     return () => {
@@ -100,13 +152,13 @@ const Dashboard: React.FC = () => {
             Dashboard
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-2 text-sm font-medium">
-            Welcome back, Alex <span className="text-amber-400">👋</span> Ready
+            Welcome back, {user?.name || "Student"} <span className="text-amber-400">👋</span> Ready
             to learn something new?
           </p>
         </div>
 
         <div className="flex items-center gap-4">
-          <button className="relative p-2.5 rounded-xl text-slate-400 hover:text-primary hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all group">
+          <button onClick={() => setStatusMessage("No new notifications right now. You're all caught up!")} className="relative p-2.5 rounded-xl text-slate-400 hover:text-primary hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all group">
             <span className="material-symbols-outlined text-[24px] group-hover:scale-110 transition-transform">
               notifications
             </span>
@@ -116,20 +168,20 @@ const Dashboard: React.FC = () => {
           <div className="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-800/50">
             <div className="text-right hidden md:block">
               <p className="text-sm font-bold text-slate-700 dark:text-white">
-                Alex Morgan
+                {user?.name || "Student"}
               </p>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                 Student
               </p>
             </div>
-            <div className="relative cursor-pointer group">
+            <button onClick={() => navigate("/settings")} className="relative cursor-pointer group" aria-label="Open settings">
               <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center border-2 border-white dark:border-slate-800 shadow-sm overflow-hidden group-hover:border-primary transition-colors">
                 <span className="text-indigo-600 dark:text-indigo-400 font-bold">
-                  AM
+                  {(user?.name || "Student").split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase()}
                 </span>
               </div>
               <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white dark:border-background-dark"></div>
-            </div>
+            </button>
           </div>
         </div>
       </header>
@@ -143,14 +195,14 @@ const Dashboard: React.FC = () => {
               </span>
             </div>
             <span className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-              42
+              {appState.lectures.length}
             </span>
             <div className="flex items-center gap-1.5 mt-1">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                 Lectures
               </span>
               <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">
-                +3 new
+                {readyLectures.length} ready
               </span>
             </div>
           </div>
@@ -161,7 +213,7 @@ const Dashboard: React.FC = () => {
               </span>
             </div>
             <span className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-              128
+              {appState.lectureNotes ? Object.keys(appState.lectureNotes).length : 0}
             </span>
             <div className="flex items-center gap-1.5 mt-1">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -179,14 +231,14 @@ const Dashboard: React.FC = () => {
               </span>
             </div>
             <span className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-              85%
+              {quizAverage || 0}%
             </span>
             <div className="flex items-center gap-1.5 mt-1">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                 Quiz Avg.
               </span>
               <span className="text-[10px] font-bold text-purple-600 bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded-full">
-                Top 10%
+                {appState.quizAttempts.length} attempts
               </span>
             </div>
           </div>
@@ -207,26 +259,26 @@ const Dashboard: React.FC = () => {
             <p className="text-[10px] font-medium text-indigo-200">
               Study Streak
             </p>
-            <h3 className="text-lg font-bold mt-0.5 mb-3">5 Day Streak</h3>
+            <h3 className="text-lg font-bold mt-0.5 mb-3">{visibleStreak} Day Streak</h3>
             <div className="flex justify-between items-center">
-              {["Sa", "Su", "Mo", "Tu", "We", "Th", "Fr"].map((day, idx) => (
+              {learningData.map((day, idx) => (
                 <div
-                  key={day}
-                  className={`flex flex-col items-center gap-1 ${idx > 4 ? "opacity-40" : ""}`}
+                  key={day.fullName}
+                  className={`flex flex-col items-center gap-1 ${!day.completed ? "opacity-40" : ""}`}
                 >
                   <div
-                    className={`w-6 h-6 rounded-full flex items-center justify-center shadow-lg ${idx < 4 ? "bg-emerald-500 text-white shadow-emerald-500/20" : idx === 4 ? "bg-white text-indigo-600 shadow-white/20 animate-pulse ring-2 ring-indigo-300 ring-opacity-50" : "border-1.5 border-dashed border-indigo-300/30"}`}
+                    className={`w-6 h-6 rounded-full flex items-center justify-center shadow-lg ${day.completed ? "bg-emerald-500 text-white shadow-emerald-500/20" : "border-1.5 border-dashed border-indigo-300/30"}`}
                   >
-                    {idx <= 4 && (
+                    {day.completed && (
                       <span className="material-symbols-outlined text-[14px] font-bold">
                         check
                       </span>
                     )}
                   </div>
                   <span
-                    className={`text-[8px] font-bold ${idx === 4 ? "text-white" : "text-indigo-200"}`}
+                    className="text-[8px] font-bold text-indigo-200"
                   >
-                    {day}
+                    {day.name}
                   </span>
                 </div>
               ))}
@@ -249,15 +301,15 @@ const Dashboard: React.FC = () => {
           </div>
           <div className="mb-6">
             <span className="text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
-              12h 45m
+              {totalLearningLabel}
             </span>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">
-              Excellent! You're ahead of schedule.
+              {appState.focusSessions.length ? "Focus sessions saved locally." : "Start a focus session to build your learning chart."}
             </p>
           </div>
           <div className="flex-1 w-full h-40">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data}>
+              <BarChart data={learningData}>
                 <XAxis
                   dataKey="name"
                   axisLine={false}
@@ -272,15 +324,15 @@ const Dashboard: React.FC = () => {
                     boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
                   }}
                   labelFormatter={(label) => {
-                    const item = data.find((d) => d.name === label);
+                    const item = learningData.find((d) => d.name === label);
                     return item ? item.fullName : label;
                   }}
                 />
                 <Bar dataKey="hours" radius={[6, 6, 0, 0]}>
-                  {data.map((entry, index) => (
+                  {learningData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={index === 3 ? "#6366f1" : "#e0e7ff"}
+                      fill={entry.completed ? "#6366f1" : "#e0e7ff"}
                     />
                   ))}
                 </Bar>
@@ -301,92 +353,39 @@ const Dashboard: React.FC = () => {
                 Today's Schedule
               </h3>
             </div>
-            <div className="flex gap-4 text-xs font-bold text-slate-400 uppercase tracking-widest">
-              <span>09:00 AM</span>
-              <span>12:00 PM</span>
-              <span>03:00 PM</span>
-            </div>
+            <button onClick={() => navigate("/schedule")} className="text-xs font-bold text-primary hover:text-primary-dark uppercase tracking-widest">
+              Open Schedule
+            </button>
           </div>
 
           <div className="space-y-4 relative z-10">
-            <div className="flex items-center group">
-              <div className="w-16 text-xs text-slate-400 font-bold text-right pr-4">
-                09:30 AM
-              </div>
-              <div className="flex-1 bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 rounded-2xl p-4 flex justify-between items-center hover:shadow-md transition-all cursor-pointer hover:border-blue-200 dark:hover:border-blue-800">
-                <div className="flex items-center gap-4">
-                  <div className="bg-blue-50 dark:bg-blue-900/30 p-2.5 rounded-xl text-blue-600 dark:text-blue-300 group-hover:scale-110 transition-transform duration-300">
-                    <span className="material-symbols-outlined text-[20px]">
-                      psychology
-                    </span>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                      Neural Networks Basics
-                    </h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                      Lecture 4 • PDF Processed
-                    </p>
-                  </div>
+            {todaysSchedule.map((item) => (
+              <button key={item.id} onClick={() => item.quizId ? navigate(`/active-quiz/${item.quizId}`) : item.lectureId ? navigate(`/lectures/${item.lectureId}`) : navigate("/schedule")} className="w-full flex items-center group text-left">
+                <div className="w-16 text-xs text-slate-400 font-bold text-right pr-4">
+                  {new Date(item.startsAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
                 </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 px-2.5 py-1 rounded-lg">
-                  Done
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center group">
-              <div className="w-16 text-xs text-primary font-bold text-right pr-4">
-                11:00 AM
-              </div>
-              <div className="flex-1 bg-gradient-to-r from-indigo-50 to-white dark:from-indigo-900/20 dark:to-slate-800/50 border border-indigo-200 dark:border-indigo-800 rounded-2xl p-4 flex justify-between items-center shadow-lg shadow-indigo-100/50 dark:shadow-none cursor-pointer relative overflow-hidden">
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
-                <div className="flex items-center gap-4">
-                  <div className="bg-indigo-100 dark:bg-indigo-800 p-2.5 rounded-xl text-primary dark:text-indigo-200 group-hover:scale-110 transition-transform duration-300">
-                    <span className="material-symbols-outlined text-[20px]">
-                      play_circle
-                    </span>
+                <div className="flex-1 bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 rounded-2xl p-4 flex justify-between items-center hover:shadow-md transition-all cursor-pointer hover:border-blue-200 dark:hover:border-blue-800">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-blue-50 dark:bg-blue-900/30 p-2.5 rounded-xl text-blue-600 dark:text-blue-300 group-hover:scale-110 transition-transform duration-300">
+                      <span className="material-symbols-outlined text-[20px]">
+                        {item.type === "quiz" ? "quiz" : item.type === "focus" ? "timer" : "event"}
+                      </span>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                        {item.title}
+                      </h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                        {item.course || item.location || item.notes || "Local schedule item"}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                      Deep Learning Fundamentals
-                    </h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                      Video Lecture • In Progress
-                    </p>
-                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 px-2.5 py-1 rounded-lg">
+                    {item.status}
+                  </span>
                 </div>
-                <button className="text-xs bg-primary text-white px-4 py-2 rounded-lg shadow-sm font-semibold hover:bg-primary-dark transition-all transform hover:-translate-y-0.5">
-                  Resume
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center group opacity-80 hover:opacity-100 transition-opacity">
-              <div className="w-16 text-xs text-slate-400 font-bold text-right pr-4">
-                02:00 PM
-              </div>
-              <div className="flex-1 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 flex justify-between items-center hover:bg-white dark:hover:bg-slate-800 transition-colors cursor-pointer">
-                <div className="flex items-center gap-4">
-                  <div className="bg-slate-100 dark:bg-slate-700 p-2.5 rounded-xl text-slate-500 dark:text-slate-400">
-                    <span className="material-symbols-outlined text-[20px]">
-                      quiz
-                    </span>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                      Weekly Quiz Review
-                    </h4>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 font-medium mt-0.5">
-                      Scheduled
-                    </p>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider border border-slate-200 dark:border-slate-700 text-slate-400 px-2.5 py-1 rounded-lg">
-                  Upcoming
-                </span>
-              </div>
-            </div>
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -398,7 +397,7 @@ const Dashboard: React.FC = () => {
             <h3 className="font-bold text-slate-900 dark:text-white text-lg">
               Recently Studied
             </h3>
-            <button className="text-sm font-bold text-primary hover:text-primary-dark flex items-center gap-1 transition-colors">
+            <button onClick={() => navigate("/lectures")} className="text-sm font-bold text-primary hover:text-primary-dark flex items-center gap-1 transition-colors">
               View All
               <span className="material-symbols-outlined text-[18px]">
                 arrow_forward
@@ -414,79 +413,44 @@ const Dashboard: React.FC = () => {
               <div className="col-span-1 text-right">Last Access</div>
             </div>
 
-            <div className="bg-slate-50 dark:bg-slate-800/30 rounded-2xl p-4 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer border border-transparent hover:border-slate-100 dark:hover:border-slate-700 group">
-              <div className="grid grid-cols-12 items-center">
-                <div className="col-span-6 flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
-                    AI
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors">
-                      Intro to AI Ethics
-                    </h4>
-                  </div>
-                </div>
-                <div className="col-span-2 flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs font-medium">
-                  <span className="material-symbols-outlined text-[18px]">
-                    picture_as_pdf
-                  </span>
-                  PDF
-                </div>
-                <div className="col-span-3 pr-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-indigo-500 rounded-full"
-                        style={{ width: "75%" }}
-                      ></div>
+            {recentLectures.map((lecture) => (
+              <button key={lecture.id} onClick={() => navigate(`/lectures/${lecture.id}`)} className="w-full bg-slate-50 dark:bg-slate-800/30 rounded-2xl p-4 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer border border-transparent hover:border-slate-100 dark:hover:border-slate-700 group text-left">
+                <div className="grid grid-cols-12 items-center">
+                  <div className="col-span-6 flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+                      {lecture.course.slice(0, 2).toUpperCase()}
                     </div>
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      75%
-                    </span>
-                  </div>
-                </div>
-                <div className="col-span-1 text-right text-xs text-slate-400 font-medium">
-                  2h ago
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-slate-50 dark:bg-slate-800/30 rounded-2xl p-4 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer border border-transparent hover:border-slate-100 dark:hover:border-slate-700 group">
-              <div className="grid grid-cols-12 items-center">
-                <div className="col-span-6 flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
-                    ML
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors">
-                      Machine Learning 101
-                    </h4>
-                  </div>
-                </div>
-                <div className="col-span-2 flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs font-medium">
-                  <span className="material-symbols-outlined text-[18px]">
-                    play_circle
-                  </span>
-                  Video
-                </div>
-                <div className="col-span-3 pr-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-emerald-500 rounded-full"
-                        style={{ width: "45%" }}
-                      ></div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors">
+                        {lecture.title}
+                      </h4>
                     </div>
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      45%
+                  </div>
+                  <div className="col-span-2 flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs font-medium">
+                    <span className="material-symbols-outlined text-[18px]">
+                      {lecture.icon}
                     </span>
+                    {lecture.type}
+                  </div>
+                  <div className="col-span-3 pr-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-indigo-500 rounded-full"
+                          style={{ width: `${lecture.studyProgress}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        {lecture.studyProgress}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="col-span-1 text-right text-xs text-slate-400 font-medium">
+                    {lecture.date}
                   </div>
                 </div>
-                <div className="col-span-1 text-right text-xs text-slate-400 font-medium">
-                  Yesterday
-                </div>
-              </div>
-            </div>
+              </button>
+            ))}
           </div>
         </div>
 
@@ -549,6 +513,7 @@ const Dashboard: React.FC = () => {
                 </div>
                 <input
                   type="text"
+                  aria-label="Focus timer task"
                   value={taskName}
                   onChange={(e) => setTaskName(e.target.value)}
                   className="text-xs font-bold text-indigo-200 mt-2 uppercase tracking-widest bg-transparent text-center focus:outline-none focus:text-white transition-colors w-40 border-b border-transparent focus:border-indigo-400 placeholder-indigo-400/50 hover:text-white"
@@ -613,6 +578,11 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
+      {statusMessage && (
+        <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white shadow-lg">
+          {statusMessage}
+        </div>
+      )}
     </div>
   );
 };

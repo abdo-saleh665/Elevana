@@ -2,22 +2,26 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import UpgradeModal from "../components/UpgradeModal";
+import { useAuth } from "../auth";
+import { resetLocalAppState, updateAppState, useAppState } from "../localStore";
 
 interface SettingsState {
   fullName: string;
+  email: string;
   learningStyle: string;
   theme: "light" | "dark";
   dailyReminders: boolean;
   quizAlerts: boolean;
 }
 
-const defaultState: SettingsState = {
+const getDefaultState = (): SettingsState => ({
   fullName: "Alex Student",
+  email: "alex.student@university.edu",
   learningStyle: "Text-Based (Bullet points & Summaries)",
   theme: "light",
   dailyReminders: false,
   quizAlerts: true,
-};
+});
 
 const sectionIds = ["profile", "app-preferences", "subscription", "security"];
 const sectionLabels = [
@@ -30,23 +34,115 @@ const sectionIcons = ["person", "tune", "card_membership", "security"];
 
 const Settings: React.FC = () => {
   const navigate = useNavigate();
-  const [initialState, setInitialState] = useState<SettingsState>(defaultState);
-  const [formData, setFormData] = useState<SettingsState>(defaultState);
+  const { user } = useAuth();
+  const appState = useAppState();
+  const fullNameRef = useRef<HTMLInputElement | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const getStoreSettings = (): SettingsState => ({
+    fullName: user?.name || "Alex Student",
+    email: user?.email || "alex.student@university.edu",
+    learningStyle: appState.settings.learningStyle,
+    theme: appState.settings.theme,
+    dailyReminders: appState.settings.dailyReminders,
+    quizAlerts: appState.settings.quizAlerts,
+  });
+  const [initialState, setInitialState] = useState<SettingsState>(getStoreSettings);
+  const [formData, setFormData] = useState<SettingsState>(getStoreSettings);
   const [activeSection, setActiveSection] = useState("profile");
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   const hasChanges = JSON.stringify(initialState) !== JSON.stringify(formData);
 
+  const applyTheme = (theme: "light" | "dark") => {
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  };
+
   const handleChange = (field: keyof SettingsState, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    if (field === "theme") {
+      applyTheme(value as "light" | "dark");
+    }
   };
 
   const handleSave = () => {
+    updateAppState((state) => ({
+      ...state,
+      settings: {
+        ...state.settings,
+        learningStyle: formData.learningStyle,
+        theme: formData.theme,
+        dailyReminders: formData.dailyReminders,
+        quizAlerts: formData.quizAlerts,
+      },
+      users: state.users.map((item) =>
+        item.id === user?.id
+          ? { ...item, name: formData.fullName, email: formData.email.trim().toLowerCase() }
+          : item,
+      ),
+    }));
     setInitialState(formData);
+    setStatusMessage("Settings saved locally.");
   };
 
   const handleCancel = () => {
     setFormData(initialState);
+    if (initialState.theme !== formData.theme) {
+      applyTheme(initialState.theme);
+    }
+  };
+
+  const handleUpgrade = () => {
+    if (!user) return;
+
+    updateAppState((state) => ({
+      ...state,
+      users: state.users.map((item) =>
+        item.id === user.id ? { ...item, plan: "pro" } : item,
+      ),
+    }));
+    setStatusMessage("Pro plan enabled locally.");
+  };
+
+  const handleChangePassword = () => {
+    const password = window.prompt("Enter a new local password (minimum 8 characters):");
+
+    if (!password) return;
+
+    if (password.length < 8) {
+      setStatusMessage("Password must be at least 8 characters.");
+      return;
+    }
+
+    updateAppState((state) => ({
+      ...state,
+      users: state.users.map((item) =>
+        item.id === user?.id ? { ...item, password } : item,
+      ),
+    }));
+    setStatusMessage("Password changed locally.");
+  };
+
+  const handleRevokeSession = () => {
+    setStatusMessage("Secondary demo session revoked locally.");
+  };
+
+  const handleResetLocalData = () => {
+    const confirmed = window.confirm(
+      "Reset all local Elevana data in this browser? This clears localStorage, including local Pro access.",
+    );
+
+    if (!confirmed) return;
+
+    resetLocalAppState();
+    setInitialState(getDefaultState());
+    setFormData(getDefaultState());
+    setStatusMessage("All local browser data reset.");
   };
 
   // Scroll to section without changing URL hash (so back button works correctly)
@@ -144,12 +240,12 @@ const Settings: React.FC = () => {
                   Update your photo and personal details.
                 </p>
               </div>
-              <button className="text-sm font-semibold text-primary hover:text-primary-dark transition-colors px-4 py-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30">
+              <button onClick={() => fullNameRef.current?.focus()} className="text-sm font-semibold text-primary hover:text-primary-dark transition-colors px-4 py-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30">
                 Edit Profile
               </button>
             </div>
             <div className="flex flex-col md:flex-row gap-8 items-start">
-              <div className="relative group cursor-pointer self-center md:self-start">
+              <div onClick={() => fullNameRef.current?.focus()} className="relative group cursor-pointer self-center md:self-start">
                 <img
                   src="https://lh3.googleusercontent.com/aida-public/AB6AXuDZqSawxwi_h7F6flOxmbBCroI532FWbizjtaDoRSuq6n5n18oiILC57PlKOHqK9xi5j8D7nuy78ikwDX3fefySAeJ_VF-4_T_087ZYOEScKpg_6tnkBE54kuGkwdOuh_5W4hBcE-TMTjgWK7FI7_ThW3Tvl0Y7DYvPfxkWjeu1iWAnMDJS2aOHNCDesuEGWOAM1qb3aunHHHJwFcEz7-FxjgmZp5ctcQtEV31-uarWE3i5pHKXSyHYkOVkRqKc4B-G1KuW7AvqZWw"
                   alt="Profile"
@@ -164,35 +260,27 @@ const Settings: React.FC = () => {
               <div className="flex-1 space-y-6 w-full">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Full Name
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.fullName}
+                    <label htmlFor="fullName" className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Full Name</label>
+                    <input ref={fullNameRef} id="fullName" name="fullName" autoComplete="name" type="text" value={formData.fullName}
                       onChange={(e) => handleChange("fullName", e.target.value)}
                       className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm font-medium rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary block p-3 transition-shadow shadow-sm outline-none"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Email Address
-                    </label>
+                    <label htmlFor="email" className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Email Address</label>
                     <div className="relative">
-                      <input
-                        type="email"
-                        defaultValue="alex.student@university.edu"
-                        disabled
-                        className="w-full bg-slate-100/50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-sm font-medium rounded-xl block p-3 cursor-not-allowed outline-none"
+                      <input id="email" name="email" autoComplete="email" type="email" value={formData.email}
+                        onChange={(e) => handleChange("email", e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm font-medium rounded-xl block p-3 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                       />
                       <span className="material-symbols-outlined absolute right-3 top-3 text-slate-400 text-lg">
-                        lock
+                        mail
                       </span>
                     </div>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <label htmlFor="learning-style" className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Learning Style Preference
                   </label>
                   <p className="text-xs text-slate-400 mb-2">
@@ -200,6 +288,8 @@ const Settings: React.FC = () => {
                   </p>
                   <div className="relative">
                     <select
+                      id="learning-style"
+                      name="learningStyle"
                       value={formData.learningStyle}
                       onChange={(e) =>
                         handleChange("learningStyle", e.target.value)
@@ -283,10 +373,7 @@ const Settings: React.FC = () => {
                     Receive a motivational notification at 9:00 AM daily.
                   </p>
                 </div>
-                <button
-                  onClick={() =>
-                    handleChange("dailyReminders", !formData.dailyReminders)
-                  }
+                <button role="switch" aria-checked={formData.dailyReminders} onClick={() => handleChange("dailyReminders", !formData.dailyReminders)}
                   className={`w-12 h-6 rounded-full relative transition-colors duration-200 ease-in-out ${
                     formData.dailyReminders
                       ? "bg-primary"
@@ -313,10 +400,7 @@ const Settings: React.FC = () => {
                     Get notified instantly when AI generates new quizzes.
                   </p>
                 </div>
-                <button
-                  onClick={() =>
-                    handleChange("quizAlerts", !formData.quizAlerts)
-                  }
+                <button role="switch" aria-checked={formData.quizAlerts} onClick={() => handleChange("quizAlerts", !formData.quizAlerts)}
                   className={`w-12 h-6 rounded-full relative transition-colors duration-200 ease-in-out ${
                     formData.quizAlerts
                       ? "bg-primary"
@@ -360,14 +444,14 @@ const Settings: React.FC = () => {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                      Free Plan
+                      {user?.plan === "pro" ? "Pro Plan" : "Free Plan"}
                     </h3>
                     <span className="text-[10px] font-bold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full uppercase">
                       Current
                     </span>
                   </div>
                   <p className="text-sm text-slate-500">
-                    Basic note generation &amp; 3 quizzes/week.
+                    {user?.plan === "pro" ? "Demo Pro access enabled in this browser only." : "Local MVP note generation and quiz access."}
                   </p>
                 </div>
               </div>
@@ -379,15 +463,15 @@ const Settings: React.FC = () => {
                 <span className="material-symbols-outlined text-lg">
                   auto_awesome
                 </span>
-                Upgrade to Pro
+                {user?.plan === "pro" ? "Manage Pro" : "Upgrade to Pro"}
               </button>
             </div>
 
             <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
                 "Unlimited AI Note Generation",
-                "Advanced Quiz Mode (Voice & Text)",
-                "Priority Support",
+                "Lecture-grounded AI Tutor",
+                "Local quiz and schedule tracking",
               ].map((feature) => (
                 <div
                   key={feature}
@@ -415,14 +499,28 @@ const Settings: React.FC = () => {
               <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
                 <div>
                   <h3 className="font-bold text-slate-900 dark:text-slate-200">
-                    Password
+                    Local Demo Password
                   </h3>
                   <p className="text-sm text-slate-500 mt-1">
-                    Last changed 3 months ago
+                    Stored in browser storage for MVP testing only.
                   </p>
                 </div>
-                <button className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs uppercase tracking-wide px-4 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                <button onClick={handleChangePassword} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs uppercase tracking-wide px-4 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                   Change
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-rose-50 dark:bg-rose-900/10 rounded-xl border border-rose-100 dark:border-rose-900/30">
+                <div>
+                  <h3 className="font-bold text-rose-900 dark:text-rose-200">
+                    Reset Local Demo Data
+                  </h3>
+                  <p className="text-sm text-rose-700/70 dark:text-rose-300/80 mt-1">
+                    Clears this website's localStorage, including local users, Pro access, lectures, quizzes, schedule items, and chats.
+                  </p>
+                </div>
+                <button onClick={handleResetLocalData} className="bg-white dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-200 font-bold text-xs uppercase tracking-wide px-4 py-2 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-colors">
+                  Reset
                 </button>
               </div>
 
@@ -470,7 +568,7 @@ const Settings: React.FC = () => {
                         </p>
                       </div>
                     </div>
-                    <button className="text-xs font-bold text-slate-400 hover:text-red-500 uppercase tracking-wide transition-colors">
+                    <button onClick={handleRevokeSession} className="text-xs font-bold text-slate-400 hover:text-red-500 uppercase tracking-wide transition-colors">
                       Revoke
                     </button>
                   </div>
@@ -483,6 +581,16 @@ const Settings: React.FC = () => {
 
       {/* Conditional Footer - only shows when changes are made */}
       <AnimatePresence>
+        {statusMessage && !hasChanges && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white shadow-lg"
+          >
+            {statusMessage}
+          </motion.div>
+        )}
         {hasChanges && (
           <motion.div
             initial={{ y: 100, opacity: 0 }}
@@ -511,6 +619,7 @@ const Settings: React.FC = () => {
       <UpgradeModal
         open={isUpgradeModalOpen}
         onClose={() => setIsUpgradeModalOpen(false)}
+        onUpgrade={handleUpgrade}
       />
     </div>
   );

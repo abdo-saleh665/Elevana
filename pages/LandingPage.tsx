@@ -8,6 +8,24 @@ const LandingPage: React.FC = () => {
   const [billingCycle, setBillingCycle] = React.useState<"monthly" | "yearly">(
     "monthly",
   );
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    if (typeof document !== "undefined") {
+      return document.documentElement.classList.contains("dark");
+    }
+    return false;
+  });
+
+  const toggleTheme = () => {
+    const newTheme = !isDarkMode;
+    setIsDarkMode(newTheme);
+    if (newTheme) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  };
 
   const handleScroll = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     e.preventDefault();
@@ -36,7 +54,16 @@ const LandingPage: React.FC = () => {
               Eleva<span className="text-primary dark:text-indigo-400">na</span>
             </span>
           </a>
-          <div className="flex md:order-2 space-x-3 md:space-x-4 rtl:space-x-reverse">
+          <div className="flex items-center md:order-2 space-x-3 md:space-x-4 rtl:space-x-reverse">
+            <button
+              onClick={toggleTheme}
+              className="p-2 text-neutral-500 dark:text-gray-400 hover:bg-neutral-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex items-center justify-center"
+              aria-label="Toggle Dark Mode"
+            >
+              <span className="material-symbols-outlined text-xl">
+                {isDarkMode ? "light_mode" : "dark_mode"}
+              </span>
+            </button>
             <button
               onClick={() => navigate("/login")}
               className="text-neutral-600 dark:text-gray-300 hover:text-primary dark:hover:text-white font-medium rounded-lg text-sm px-4 py-2 text-center transition-colors"
@@ -102,7 +129,7 @@ const LandingPage: React.FC = () => {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
             </span>
-            New: Flashcard integration is live
+            New: AI-powered study tools
           </motion.div>
 
           <motion.h1
@@ -123,8 +150,8 @@ const LandingPage: React.FC = () => {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="mt-6 text-xl text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto mb-12 leading-relaxed font-light"
           >
-            Transform hours of university lectures into concise notes,
-            interactive quizzes, and personalized study plans in seconds.
+            Transform readable lecture files into concise notes,
+            interactive quizzes, and local study plans in one focused workspace.
           </motion.p>
 
           <motion.div
@@ -142,7 +169,7 @@ const LandingPage: React.FC = () => {
                 arrow_forward
               </span>
             </button>
-            <button className="w-full sm:w-auto px-8 py-4 bg-white dark:bg-white/5 text-neutral-800 dark:text-white border border-neutral-200 dark:border-white/10 rounded-xl font-semibold hover:bg-neutral-50 dark:hover:bg-white/10 transition-all duration-200 text-lg flex items-center justify-center gap-2 shadow-sm hover:shadow-md backdrop-blur-sm">
+            <button onClick={(e) => handleScroll(e as unknown as React.MouseEvent<HTMLAnchorElement>, "how-it-works")} className="w-full sm:w-auto px-8 py-4 bg-white dark:bg-white/5 text-neutral-800 dark:text-white border border-neutral-200 dark:border-white/10 rounded-xl font-semibold hover:bg-neutral-50 dark:hover:bg-white/10 transition-all duration-200 text-lg flex items-center justify-center gap-2 shadow-sm hover:shadow-md backdrop-blur-sm">
               <span className="material-symbols-outlined text-primary dark:text-indigo-300">
                 play_circle
               </span>
@@ -195,7 +222,7 @@ const LandingPage: React.FC = () => {
                     <div className="h-2.5 bg-neutral-200 dark:bg-gray-700 rounded-full w-5/6 animate-pulse delay-150"></div>
                   </div>
                   <div className="mt-6 flex items-center justify-between text-xs text-neutral-400">
-                    <span>Processing lecture audio...</span>
+                    <span>Processing lecture document...</span>
                     <span>78%</span>
                   </div>
                   <div className="mt-2 h-1.5 w-full bg-neutral-100 dark:bg-gray-800 rounded-full overflow-hidden">
@@ -234,14 +261,14 @@ const LandingPage: React.FC = () => {
             {[
               {
                 title: "PDF to Notes",
-                desc: "Upload raw lecture slides or textbook chapters. Our AI instantly extracts key concepts and generates concise, readable summaries.",
+                desc: "Upload readable PDF, DOCX, TXT, or Markdown study material. Elevana extracts text and generates concise study notes.",
                 icon: "description",
                 color:
                   "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400",
               },
               {
                 title: "AI Quizzes",
-                desc: "Test your knowledge immediately. Generate multiple choice or short-answer quizzes based specifically on your uploaded materials.",
+                desc: "Test your knowledge immediately. Generate multiple-choice quizzes based on your processed lecture notes.",
                 icon: "quiz",
                 color:
                   "bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400",
@@ -306,19 +333,19 @@ const LandingPage: React.FC = () => {
               {
                 step: "01",
                 title: "Upload Material",
-                desc: "Drag & drop your lecture slides, PDFs, or paste a YouTube link.",
+                desc: "Drag & drop a readable PDF, DOCX, TXT, or Markdown file.",
                 icon: "upload_file",
               },
               {
                 step: "02",
                 title: "AI Analysis",
-                desc: "Elevana instantly reads, summarizes, and extracts key concepts.",
+                desc: "Elevana extracts readable text, summarizes it, and identifies key concepts.",
                 icon: "auto_awesome",
               },
               {
                 step: "03",
                 title: "Start Mastering",
-                desc: "Get instant quizzes, flashcards, and a tailored study schedule.",
+                desc: "Get instant quizzes and a tailored study schedule.",
                 icon: "school",
               },
             ].map((item, i) => (
@@ -362,7 +389,7 @@ const LandingPage: React.FC = () => {
             Invest in your GPA
           </h2>
           <p className="text-lg text-neutral-500 dark:text-neutral-400 max-w-2xl mx-auto mb-12">
-            Choose the plan that fits your semester workload. Cancel anytime.
+            MVP pricing is a local demo preview. Real billing is not connected yet.
           </p>
 
           <div className="flex items-center justify-center gap-4 mb-16">
@@ -424,9 +451,9 @@ const LandingPage: React.FC = () => {
 
               <ul className="space-y-4 mb-8">
                 {[
-                  "5 PDF Uploads / month",
-                  "Basic Summaries",
-                  "Standard Support",
+                  "Local PDF/DOCX/TXT uploads",
+                  "AI-generated summaries",
+                  "Local quiz attempts",
                 ].map((feat) => (
                   <li
                     key={feat}
@@ -480,10 +507,10 @@ const LandingPage: React.FC = () => {
 
               <ul className="space-y-4 mb-8">
                 {[
-                  "Unlimited PDF Uploads",
-                  "Advanced AI Quizzes (Deep Mode)",
-                  "Personalized Study Plans",
-                  "Priority Email Support",
+                  "Demo unlimited local uploads",
+                  "Lecture-grounded AI quizzes",
+                  "Local study schedule tools",
+                  "MVP Pro preview",
                 ].map((feat) => (
                   <li
                     key={feat}
@@ -503,7 +530,7 @@ const LandingPage: React.FC = () => {
                 onClick={() => navigate("/signup")}
                 className="w-full py-3.5 rounded-xl bg-white text-primary-dark font-bold hover:bg-indigo-50 transition-colors shadow-lg"
               >
-                Upgrade to Pro
+                Preview Pro
               </button>
             </motion.div>
           </div>
@@ -520,19 +547,19 @@ const LandingPage: React.FC = () => {
             {[
               {
                 q: "Is Elevana free to use?",
-                a: "Yes! Our Student Basic plan is completely free and includes 5 PDF uploads per month, basic summaries, and standard support. No credit card required to start.",
+                a: "Yes. This MVP runs as a local-first demo with no real payment required.",
               },
               {
                 q: "How accurate is the AI summarization?",
-                a: "We use advanced large language models optimized for academic content. While accuracy is very high (98%+), we always recommend reviewing the summaries alongside your original material.",
+                a: "Elevana uses AI to structure notes and quizzes, but you should review generated content against your original material before relying on it.",
               },
               {
                 q: "Can I upload handwritten notes?",
-                a: "Currently, we specialize in digital text (PDF, PPTX, DOCX) and audio/video lectures. Handwritten note recognition is on our roadmap for Q4 2026.",
+                a: "Not in this MVP. Use readable PDF, DOCX, TXT, or Markdown files.",
               },
               {
                 q: "Is my data secure?",
-                a: "Absolutely. We use enterprise-grade encryption (AES-256) and Row Level Security. Your uploads are private and are NEVER used to train our public models.",
+                a: "For this MVP, uploaded material stays in the local app flow. Chat messages are sent to Groq only when you use the AI Tutor.",
               },
             ].map((faq, i) => (
               <FAQItem key={i} question={faq.q} answer={faq.a} />
@@ -549,8 +576,7 @@ const LandingPage: React.FC = () => {
             Ready to ace your exams?
           </h2>
           <p className="text-indigo-100 text-lg mb-10 max-w-2xl mx-auto">
-            Join thousands of students who are already studying smarter, not
-            harder.
+            Start with the local MVP workflow: upload, summarize, quiz, and review.
           </p>
           <button
             onClick={() => navigate("/signup")}
@@ -566,27 +592,28 @@ const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-12 mb-16">
             <div className="col-span-2 lg:col-span-2">
-              <a className="flex items-center space-x-2.5 mb-6">
+              <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="flex items-center space-x-2.5 mb-6">
                 <span className="self-center text-xl font-bold whitespace-nowrap text-neutral-800 dark:text-white tracking-tight font-display">
                   Eleva
                   <span className="text-primary dark:text-indigo-400">na</span>
                 </span>
-              </a>
+              </button>
               <p className="text-neutral-500 dark:text-neutral-400 text-sm leading-relaxed max-w-sm">
                 Elevana is the AI-powered study companion that helps you master
                 your lectures, ace your exams, and reclaim your free time.
               </p>
               <div className="flex gap-4 mt-6">
                 {["twitter", "github"].map((social) => (
-                  <a
+                  <button
                     key={social}
-                    href="#"
+                    onClick={() => navigate(social === "twitter" ? "/community" : "/docs")}
+                    aria-label={`${social} information`}
                     className="w-10 h-10 rounded-full bg-neutral-100 dark:bg-white/5 flex items-center justify-center text-neutral-500 dark:text-neutral-400 hover:bg-primary hover:text-white dark:hover:bg-accent transition-all"
                   >
                     <span className="material-symbols-outlined text-[20px]">
                       {social === "twitter" ? "flutter_dash" : "code"}
                     </span>
-                  </a>
+                  </button>
                 ))}
               </div>
             </div>
@@ -598,7 +625,8 @@ const LandingPage: React.FC = () => {
               <ul className="space-y-4 text-sm text-neutral-500 dark:text-neutral-400">
                 <li>
                   <a
-                    href="#"
+                    href="#features"
+                    onClick={(e) => handleScroll(e, "features")}
                     className="hover:text-primary dark:hover:text-white transition-colors"
                   >
                     Features
@@ -606,27 +634,22 @@ const LandingPage: React.FC = () => {
                 </li>
                 <li>
                   <a
-                    href="#"
+                    href="#pricing"
+                    onClick={(e) => handleScroll(e, "pricing")}
                     className="hover:text-primary dark:hover:text-white transition-colors"
                   >
                     Pricing
                   </a>
                 </li>
                 <li>
-                  <a
-                    href="#"
-                    className="hover:text-primary dark:hover:text-white transition-colors"
-                  >
+                  <button onClick={() => navigate("/integrations")} className="hover:text-primary dark:hover:text-white transition-colors">
                     Integration
-                  </a>
+                  </button>
                 </li>
                 <li>
-                  <a
-                    href="#"
-                    className="hover:text-primary dark:hover:text-white transition-colors"
-                  >
+                  <button onClick={() => navigate("/changelog")} className="hover:text-primary dark:hover:text-white transition-colors">
                     Changelog
-                  </a>
+                  </button>
                 </li>
               </ul>
             </div>
@@ -637,36 +660,24 @@ const LandingPage: React.FC = () => {
               </h4>
               <ul className="space-y-4 text-sm text-neutral-500 dark:text-neutral-400">
                 <li>
-                  <a
-                    href="#"
-                    className="hover:text-primary dark:hover:text-white transition-colors"
-                  >
+                  <button onClick={() => navigate("/docs")} className="hover:text-primary dark:hover:text-white transition-colors">
                     Documentation
-                  </a>
+                  </button>
                 </li>
                 <li>
-                  <a
-                    href="#"
-                    className="hover:text-primary dark:hover:text-white transition-colors"
-                  >
+                  <button onClick={() => navigate("/api-reference")} className="hover:text-primary dark:hover:text-white transition-colors">
                     API Reference
-                  </a>
+                  </button>
                 </li>
                 <li>
-                  <a
-                    href="#"
-                    className="hover:text-primary dark:hover:text-white transition-colors"
-                  >
+                  <button onClick={() => navigate("/community")} className="hover:text-primary dark:hover:text-white transition-colors">
                     Community
-                  </a>
+                  </button>
                 </li>
                 <li>
-                  <a
-                    href="#"
-                    className="hover:text-primary dark:hover:text-white transition-colors"
-                  >
+                  <button onClick={() => navigate("/help")} className="hover:text-primary dark:hover:text-white transition-colors">
                     Help Center
-                  </a>
+                  </button>
                 </li>
               </ul>
             </div>
@@ -677,28 +688,19 @@ const LandingPage: React.FC = () => {
               </h4>
               <ul className="space-y-4 text-sm text-neutral-500 dark:text-neutral-400">
                 <li>
-                  <a
-                    href="#"
-                    className="hover:text-primary dark:hover:text-white transition-colors"
-                  >
+                  <button onClick={() => navigate("/privacy")} className="hover:text-primary dark:hover:text-white transition-colors">
                     Privacy Policy
-                  </a>
+                  </button>
                 </li>
                 <li>
-                  <a
-                    href="#"
-                    className="hover:text-primary dark:hover:text-white transition-colors"
-                  >
+                  <button onClick={() => navigate("/terms")} className="hover:text-primary dark:hover:text-white transition-colors">
                     Terms of Service
-                  </a>
+                  </button>
                 </li>
                 <li>
-                  <a
-                    href="#"
-                    className="hover:text-primary dark:hover:text-white transition-colors"
-                  >
+                  <button onClick={() => navigate("/security")} className="hover:text-primary dark:hover:text-white transition-colors">
                     Security
-                  </a>
+                  </button>
                 </li>
               </ul>
             </div>

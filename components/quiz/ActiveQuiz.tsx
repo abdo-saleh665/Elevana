@@ -1,88 +1,33 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { createQuizAttempt } from "../../quizAttempts";
+import { useAppState } from "../../localStore";
 
 interface ActiveQuizProps {
   onExit: () => void;
-}
-
-interface Question {
-  id: string;
-  topic: string;
-  text: string;
-  options: { id: string; text: string }[];
-  correctOptionId: string;
-  explanation: string;
 }
 
 type QuizState = "active" | "confirm-submit";
 
 const ActiveQuiz: React.FC<ActiveQuizProps> = ({ onExit }) => {
   const navigate = useNavigate();
+  const { quizId } = useParams();
+  const appState = useAppState();
+  const activeQuizId = quizId || "biology-midterm";
+  const quiz = appState.quizzes.find((item) => item.id === activeQuizId) || appState.quizzes[0];
+  const questions = quiz.questions;
+  const quizDurationSeconds = Math.max(60, quiz.estimatedMinutes * 60);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({}); // valid questionId -> optionId
   const [quizState, setQuizState] = useState<QuizState>("active");
-  const [timeRemaining, setTimeRemaining] = useState(14 * 60 + 32); // 14:32
-
-  // Mock Data
-  const questions: Question[] = [
-    {
-      id: "q1",
-      topic: "Cellular Biology",
-      text: "Which cellular organelle is responsible for generating the majority of the cell's supply of adenosine triphosphate (ATP)?",
-      options: [
-        { id: "opt1", text: "Nucleus" },
-        { id: "opt2", text: "Mitochondria" },
-        { id: "opt3", text: "Golgi Apparatus" },
-        { id: "opt4", text: "Endoplasmic Reticulum" },
-      ],
-      correctOptionId: "opt2",
-      explanation:
-        "Mitochondria are membrane-bound cell organelles that generate most of the chemical energy needed to power the cell's biochemical reactions.",
-    },
-    {
-      id: "q2",
-      topic: "Genetics",
-      text: "Which molecule carries genetic information in most living organisms?",
-      options: [
-        { id: "opt1", text: "DNA" },
-        { id: "opt2", text: "RNA" },
-        { id: "opt3", text: "Protein" },
-        { id: "opt4", text: "Lipid" },
-      ],
-      correctOptionId: "opt1",
-      explanation:
-        "DNA (Deoxyribonucleic acid) is the molecule that carries genetic information for the development and functioning of an organism.",
-    },
-    {
-      id: "q3",
-      topic: "Ecology",
-      text: "What is the primary source of energy for the Earth's climate system?",
-      options: [
-        { id: "opt1", text: "Geothermal energy" },
-        { id: "opt2", text: "The Sun" },
-        { id: "opt3", text: "Wind" },
-        { id: "opt4", text: "Ocean currents" },
-      ],
-      correctOptionId: "opt2",
-      explanation:
-        "The Sun is the primary source of energy for Earth's climate system, driving weather patterns and ocean currents.",
-    },
-    // Add more questions as needed for testing
-  ];
+  const [timeRemaining, setTimeRemaining] = useState(quizDurationSeconds);
+  const [startedAt] = useState(() => new Date().toISOString());
+  const hasSubmittedRef = useRef(false);
 
   const currentQuestion = questions[currentQuestionIndex];
   const totalQuestions = questions.length;
   const progressPercentage =
     ((currentQuestionIndex + 1) / totalQuestions) * 100;
-
-  useEffect(() => {
-    if (quizState === "active" && timeRemaining > 0) {
-      const timer = setInterval(() => {
-        setTimeRemaining((prev) => prev - 1);
-      }, 1000);
-      return () => clearInterval(timer);
-    }
-  }, [quizState, timeRemaining]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -111,44 +56,45 @@ const ActiveQuiz: React.FC<ActiveQuizProps> = ({ onExit }) => {
     }
   };
 
-  const calculateScore = () => {
-    let correctCount = 0;
-    questions.forEach((q) => {
-      if (answers[q.id] === q.correctOptionId) {
-        correctCount++;
-      }
-    });
-    return Math.round((correctCount / totalQuestions) * 100);
-  };
+  const handleSubmit = useCallback(() => {
+    if (hasSubmittedRef.current) {
+      return;
+    }
 
-  const getStats = () => {
-    let correct = 0;
-    let wrong = 0;
-    questions.forEach((q) => {
-      if (answers[q.id] === q.correctOptionId) correct++;
-      else wrong++;
-    });
-    return { correct, wrong };
-  };
+    hasSubmittedRef.current = true;
 
-  const handleSubmit = () => {
-    const score = calculateScore();
-    const { correct, wrong } = getStats();
-
-    navigate("/quiz/results", {
-      state: {
-        questions,
-        answers,
-        score,
-        correct,
-        wrong,
-        timeTaken: "14m",
-      },
+    const elapsedSeconds = Math.max(
+      0,
+      Math.round((Date.now() - new Date(startedAt).getTime()) / 1000),
+    );
+    const attempt = createQuizAttempt({
+      quizId: quiz.id,
+      questions,
+      answers,
+      startedAt,
+      elapsedSeconds,
     });
-  };
+
+    navigate(`/quiz/results/${attempt.id}`, { state: attempt });
+  }, [answers, navigate, questions, quiz.id, startedAt]);
+
+  useEffect(() => {
+    if (quizState === "active" && timeRemaining > 0) {
+      const timer = setInterval(() => {
+        setTimeRemaining((prev) => prev - 1);
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [quizState, timeRemaining]);
+
+  useEffect(() => {
+    if (quizState === "active" && timeRemaining === 0) {
+      handleSubmit();
+    }
+  }, [handleSubmit, quizState, timeRemaining]);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto min-h-screen bg-background-light dark:bg-background-dark flex flex-col relative">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 overflow-y-auto min-h-screen bg-background-light dark:bg-background-dark flex flex-col relative">
       <div className="fixed inset-0 pointer-events-none z-0 opacity-30 bg-[radial-gradient(at_40%_20%,hsla(228,100%,74%,0.1)_0px,transparent_50%),radial-gradient(at_80%_0%,hsla(189,100%,56%,0.1)_0px,transparent_50%),radial-gradient(at_0%_50%,hsla(340,100%,76%,0.1)_0px,transparent_50%)]"></div>
 
       {/* Main Header */}
@@ -173,7 +119,7 @@ const ActiveQuiz: React.FC<ActiveQuizProps> = ({ onExit }) => {
                 Current Quiz
               </span>
               <h1 className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[200px] lg:max-w-xs">
-                Mid-term Review: Biology 101
+                {quiz.title}
               </h1>
             </div>
           </div>
@@ -201,7 +147,7 @@ const ActiveQuiz: React.FC<ActiveQuizProps> = ({ onExit }) => {
 
       {/* Submit Confirmation Modal */}
       {quizState === "confirm-submit" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm"
             onClick={() => setQuizState("active")}

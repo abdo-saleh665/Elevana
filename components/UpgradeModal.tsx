@@ -4,9 +4,10 @@ import { motion, AnimatePresence } from "framer-motion";
 interface UpgradeModalProps {
   open: boolean;
   onClose: () => void;
+  onUpgrade?: (billingCycle: "monthly" | "annual") => void;
 }
 
-const UpgradeModal: React.FC<UpgradeModalProps> = ({ open, onClose }) => {
+const UpgradeModal: React.FC<UpgradeModalProps> = ({ open, onClose, onUpgrade }) => {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">(
     "annual",
   );
@@ -16,7 +17,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ open, onClose }) => {
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -34,12 +35,12 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ open, onClose }) => {
             className="relative w-full max-w-4xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh] md:max-h-[700px]"
           >
             {/* Close Button */}
-            <button
+            <button aria-label="Close"
               onClick={onClose}
               className="absolute top-3 right-3 z-10 p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
             >
-              <span className="material-symbols-outlined text-lg">close</span>
-            </button>
+<span className="material-symbols-outlined text-lg">close</span>
+</button>
 
             {/* Left Side - Dark Marketing Area */}
             <div className="md:w-2/5 bg-[#1e1b4b] relative p-5 md:p-6 text-white flex flex-col justify-between overflow-hidden">
@@ -58,7 +59,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ open, onClose }) => {
                   Unlock your academic potential.
                 </h2>
                 <p className="text-indigo-200 text-xs leading-relaxed">
-                  Join 10,000+ students achieving top grades with Elevana Pro.
+                  Preview the Pro workflow locally before real billing is connected.
                 </p>
               </div>
 
@@ -71,9 +72,9 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ open, onClose }) => {
                     </span>
                   </div>
                   <div>
-                    <div className="font-bold text-xs">GPA Boost</div>
+                    <div className="font-bold text-xs">MVP Preview</div>
                     <div className="text-[9px] text-indigo-200">
-                      Average 3.8 GPA among Pro users
+                      Enables local demo Pro access
                     </div>
                   </div>
                 </div>
@@ -86,9 +87,9 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ open, onClose }) => {
                     </span>
                   </div>
                   <div>
-                    <div className="font-bold text-xs">Study Faster</div>
+                    <div className="font-bold text-xs">Study Tools</div>
                     <div className="text-[9px] text-indigo-200">
-                      Save 15+ hours per week
+                      Notes, quizzes, and tutor context
                     </div>
                   </div>
                 </div>
@@ -110,11 +111,11 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ open, onClose }) => {
                       </div>
                     ))}
                     <div className="w-6 h-6 rounded-full bg-indigo-600 border border-[#1e1b4b] flex items-center justify-center text-[8px] font-bold">
-                      +2k
+                      MVP
                     </div>
                   </div>
                   <div className="text-[10px] italic text-indigo-200">
-                    "Pro totally saved my finals week!" - Sarah J.
+                    Local-only upgrade for testing the product flow.
                   </div>
                 </div>
               </div>
@@ -263,12 +264,18 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ open, onClose }) => {
                 </div>
 
                 <div className="flex justify-between items-center mb-3">
-                  <span className="bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400 px-1.5 py-0.5 rounded text-[9px] font-bold border border-orange-100 dark:border-orange-900/30">
-                    7-Day Money Back Guarantee
+                <span className="bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400 px-1.5 py-0.5 rounded text-[9px] font-bold border border-orange-100 dark:border-orange-900/30">
+                    Demo only - no payment charged
                   </span>
                 </div>
 
-                <button className="w-full py-2.5 bg-[#3d38b1] hover:bg-[#312e81] text-white rounded-lg font-bold text-sm shadow-md shadow-indigo-500/30 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-1.5">
+                <button
+                  onClick={() => {
+                    onUpgrade?.(billingCycle);
+                    onClose();
+                  }}
+                  className="w-full py-2.5 bg-[#3d38b1] hover:bg-[#312e81] text-white rounded-lg font-bold text-sm shadow-md shadow-indigo-500/30 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-1.5"
+                >
                   Upgrade to Pro
                   <span className="material-symbols-outlined text-base">
                     arrow_forward
@@ -280,7 +287,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ open, onClose }) => {
                     <span className="material-symbols-outlined text-[10px]">
                       lock
                     </span>
-                    Secure checkout via Stripe
+                    Local demo upgrade
                   </div>
                   <div className="flex items-center gap-1">
                     <span className="material-symbols-outlined text-[10px]">

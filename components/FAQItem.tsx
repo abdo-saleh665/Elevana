@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useId } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export const FAQItem: React.FC<{ question: string; answer: string }> = ({
@@ -6,11 +6,14 @@ export const FAQItem: React.FC<{ question: string; answer: string }> = ({
   answer,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const contentId = useId();
 
   return (
     <div className="border border-neutral-200 dark:border-white/10 rounded-xl overflow-hidden bg-neutral-50 dark:bg-white/5 transition-colors hover:border-primary/30 dark:hover:border-indigo-400/30">
       <button
         onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        aria-controls={contentId}
         className="w-full flex items-center justify-between p-5 text-left font-medium text-neutral-900 dark:text-white"
       >
         {question}
@@ -23,6 +26,7 @@ export const FAQItem: React.FC<{ question: string; answer: string }> = ({
       <AnimatePresence>
         {isOpen && (
           <motion.div
+            id={contentId}
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
