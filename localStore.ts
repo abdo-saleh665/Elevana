@@ -32,9 +32,16 @@ export type LocalSettings = {
   quizAlerts: boolean;
 };
 
+export type VarkMode = "visual" | "auditory" | "readWrite" | "kinesthetic";
+
+export type VarkScores = Record<VarkMode, number>;
+
 export type OnboardingProfile = {
   completed: boolean;
   learningStyle: string;
+  learningStyleScores?: VarkScores;
+  learningStyleModes?: VarkMode[];
+  learningStyleResultLabel?: string;
   weeklyCommitment: string;
   goalIntensity: number;
   completedAt?: string;
@@ -174,6 +181,61 @@ const withTime = (hours: number, minutes = 0, offsetDays = 0) => {
 const estimateMinutes = (time: string) => {
   const match = time.match(/(\d+)/);
   return match ? Number(match[1]) : 15;
+};
+
+const LEARNING_STYLE_LABELS: Record<string, string> = {
+  visual: "Visual",
+  auditory: "Aural/Auditory",
+  reading: "Read/write",
+  readwrite: "Read/write",
+  "read/write": "Read/write",
+  kinesthetic: "Kinesthetic",
+  "text-based (bullet points & summaries)": "Read/write",
+  "visual (diagrams & mind maps)": "Visual",
+  "auditory (text-to-speech optimized)": "Aural/Auditory",
+};
+
+const normalizeLearningStyleLabel = (value?: string) => {
+  if (!value) {
+    return "Read/write";
+  }
+
+  const normalized = value.trim();
+  return LEARNING_STYLE_LABELS[normalized.toLowerCase()] || normalized;
+};
+
+const isVarkMode = (value: unknown): value is VarkMode => (
+  value === "visual" ||
+  value === "auditory" ||
+  value === "readWrite" ||
+  value === "kinesthetic"
+);
+
+const normalizeVarkModes = (value: unknown): VarkMode[] | undefined => {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const modes = value.filter(isVarkMode);
+  return modes.length ? modes : undefined;
+};
+
+const normalizeVarkScores = (value: unknown): VarkScores | undefined => {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+
+  const scores = value as Partial<Record<VarkMode, unknown>>;
+  const normalizedScores: VarkScores = {
+    visual: Number(scores.visual) || 0,
+    auditory: Number(scores.auditory) || 0,
+    readWrite: Number(scores.readWrite) || 0,
+    kinesthetic: Number(scores.kinesthetic) || 0,
+  };
+
+  return Object.values(normalizedScores).some((score) => score > 0)
+    ? normalizedScores
+    : undefined;
 };
 
 const normalizeLecture = (lecture: LectureRecord, index: number): StoredLecture => ({
@@ -331,13 +393,13 @@ const createSeedState = (): ElevanaState => {
     users: [user],
     settings: {
       theme: legacyTheme === "dark" ? "dark" : "light",
-      learningStyle: "Text-Based (Bullet points & Summaries)",
+      learningStyle: "Read/write",
       dailyReminders: false,
       quizAlerts: true,
     },
     onboarding: {
       completed: false,
-      learningStyle: "reading",
+      learningStyle: "Read/write",
       weeklyCommitment: "3-5 hours / week",
       goalIntensity: 75,
     },
@@ -419,6 +481,16 @@ const sanitizeState = (state: Partial<ElevanaState> | null): ElevanaState => {
   const lectureUploadsUsed = typeof state.lectureUploadsUsed === "number"
     ? Math.max(state.lectureUploadsUsed, lectures.length)
     : lectures.length;
+  const storedSettings: Partial<LocalSettings> = state.settings || {};
+  const storedOnboarding: Partial<OnboardingProfile> = state.onboarding || {};
+  const learningStyleResultLabel = storedOnboarding.learningStyleResultLabel
+    ? normalizeLearningStyleLabel(storedOnboarding.learningStyleResultLabel)
+    : undefined;
+  const learningStyle = normalizeLearningStyleLabel(
+    learningStyleResultLabel ||
+      storedOnboarding.learningStyle ||
+      storedSettings.learningStyle,
+  );
 
   return {
     ...seed,
@@ -432,8 +504,19 @@ const sanitizeState = (state: Partial<ElevanaState> | null): ElevanaState => {
     focusSessions: Array.isArray(state.focusSessions) ? state.focusSessions : seed.focusSessions,
     aiChats: Array.isArray(state.aiChats) ? state.aiChats : seed.aiChats,
     lectureNotes: state.lectureNotes || seed.lectureNotes,
-    settings: { ...seed.settings, ...(state.settings || {}) },
-    onboarding: { ...seed.onboarding, ...(state.onboarding || {}) },
+    settings: {
+      ...seed.settings,
+      ...storedSettings,
+      learningStyle: normalizeLearningStyleLabel(storedSettings.learningStyle || learningStyle),
+    },
+    onboarding: {
+      ...seed.onboarding,
+      ...storedOnboarding,
+      learningStyle,
+      learningStyleScores: normalizeVarkScores(storedOnboarding.learningStyleScores),
+      learningStyleModes: normalizeVarkModes(storedOnboarding.learningStyleModes),
+      learningStyleResultLabel,
+    },
   };
 };
 

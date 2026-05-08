@@ -3,12 +3,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import UpgradeModal from "../components/UpgradeModal";
 import { useAuth } from "../auth";
-import { resetLocalAppState, updateAppState, useAppState } from "../localStore";
+import {
+  resetLocalAppState,
+  updateAppState,
+  useAppState,
+  type VarkMode,
+} from "../localStore";
 
 interface SettingsState {
   fullName: string;
   email: string;
-  learningStyle: string;
   theme: "light" | "dark";
   dailyReminders: boolean;
   quizAlerts: boolean;
@@ -17,7 +21,6 @@ interface SettingsState {
 const getDefaultState = (): SettingsState => ({
   fullName: "Alex Student",
   email: "alex.student@university.edu",
-  learningStyle: "Text-Based (Bullet points & Summaries)",
   theme: "light",
   dailyReminders: false,
   quizAlerts: true,
@@ -31,6 +34,13 @@ const sectionLabels = [
   "Security",
 ];
 const sectionIcons = ["person", "tune", "card_membership", "security"];
+const varkModeMeta: Record<VarkMode, { label: string; shortLabel: string; icon: string }> = {
+  visual: { label: "Visual", shortLabel: "V", icon: "visibility" },
+  auditory: { label: "Aural/Auditory", shortLabel: "A", icon: "headphones" },
+  readWrite: { label: "Read/write", shortLabel: "R", icon: "menu_book" },
+  kinesthetic: { label: "Kinesthetic", shortLabel: "K", icon: "science" },
+};
+const varkModes: VarkMode[] = ["visual", "auditory", "readWrite", "kinesthetic"];
 
 const Settings: React.FC = () => {
   const navigate = useNavigate();
@@ -41,7 +51,6 @@ const Settings: React.FC = () => {
   const getStoreSettings = (): SettingsState => ({
     fullName: user?.name || "Alex Student",
     email: user?.email || "alex.student@university.edu",
-    learningStyle: appState.settings.learningStyle,
     theme: appState.settings.theme,
     dailyReminders: appState.settings.dailyReminders,
     quizAlerts: appState.settings.quizAlerts,
@@ -50,6 +59,14 @@ const Settings: React.FC = () => {
   const [formData, setFormData] = useState<SettingsState>(getStoreSettings);
   const [activeSection, setActiveSection] = useState("profile");
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const learningStyleResult = appState.onboarding.learningStyleResultLabel ||
+    appState.onboarding.learningStyle ||
+    appState.settings.learningStyle;
+  const learningStyleScores = appState.onboarding.learningStyleScores;
+  const learningStyleModes = appState.onboarding.learningStyleModes || [];
+  const resultModeLabel = learningStyleModes.length
+    ? learningStyleModes.map((mode) => varkModeMeta[mode].label).join(" + ")
+    : learningStyleResult;
 
   const hasChanges = JSON.stringify(initialState) !== JSON.stringify(formData);
 
@@ -70,7 +87,9 @@ const Settings: React.FC = () => {
       ...state,
       settings: {
         ...state.settings,
-        learningStyle: formData.learningStyle,
+        learningStyle: state.onboarding.learningStyleResultLabel ||
+          state.onboarding.learningStyle ||
+          state.settings.learningStyle,
         theme: formData.theme,
         dailyReminders: formData.dailyReminders,
         quizAlerts: formData.quizAlerts,
@@ -273,38 +292,72 @@ const Settings: React.FC = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="learning-style" className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Learning Style Preference
-                  </label>
+                  </div>
                   <p className="text-xs text-slate-400 mb-2">
                     This helps our AI generate better notes for you.
                   </p>
-                  <div className="relative">
-                    <select
-                      id="learning-style"
-                      name="learningStyle"
-                      value={formData.learningStyle}
-                      onChange={(e) =>
-                        handleChange("learningStyle", e.target.value)
-                      }
-                      className="w-full appearance-none bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm font-medium rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary block p-3 pr-10 outline-none transition-shadow shadow-sm"
-                    >
-                      <option>
-                        Text-Based (Bullet points &amp; Summaries)
-                      </option>
-                      <option>Visual (Diagrams &amp; Mind Maps)</option>
-                      <option>Auditory (Text-to-Speech optimized)</option>
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
-                      <span className="material-symbols-outlined">
-                        expand_more
-                      </span>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/50">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex gap-3">
+                        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-indigo-50 text-primary dark:bg-indigo-900/30 dark:text-indigo-300">
+                          <span className="material-symbols-outlined">
+                            psychology
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900 dark:text-white">
+                            {learningStyleResult}
+                          </p>
+                          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                            {resultModeLabel}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => navigate("/onboarding")}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-bold text-primary shadow-sm ring-1 ring-slate-200 transition-colors hover:bg-indigo-50 dark:bg-slate-800 dark:ring-slate-700 dark:hover:bg-slate-700"
+                      >
+                        <span className="material-symbols-outlined text-lg">
+                          restart_alt
+                        </span>
+                        Retake assessment
+                      </button>
+                    </div>
+
+                    {learningStyleScores ? (
+                      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        {varkModes.map((mode) => (
+                          <div key={mode} className="rounded-lg bg-white p-3 dark:bg-slate-800">
+                            <div className="mb-2 flex items-center justify-between">
+                              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                                {varkModeMeta[mode].shortLabel}
+                              </span>
+                              <span className="material-symbols-outlined text-base text-slate-400">
+                                {varkModeMeta[mode].icon}
+                              </span>
+                            </div>
+                            <p className="text-lg font-bold text-slate-900 dark:text-white">
+                              {learningStyleScores[mode]}
+                            </p>
+                            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                              {varkModeMeta[mode].label}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="mt-4 rounded-lg border border-dashed border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+                        Retake the assessment to add V, A, R, and K scores.
+                      </div>
+                    )}
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </section>
+            </section>
 
           {/* App Preferences Section */}
           <section
